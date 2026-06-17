@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "memlin": {
+      "command": "node",
+      "args": ["__BUNDLE_DIR__/dist/mcp-server.js"],
+      "env": {
+        "MEMLIN_HOST": "antigravity"
+      }
+    }
+  }
+}

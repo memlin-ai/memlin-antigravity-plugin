@@ -1,0 +1,6 @@
+{
+  "name": "@memlin/antigravity-plugin-bundle",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true
+}
