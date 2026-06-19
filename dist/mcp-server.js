@@ -63834,6 +63834,24 @@ function shortId(id) {
   if (/^[0-9a-f]{8}-/.test(id)) return id.slice(0, 8);
   return id.length > 32 ? `${id.slice(0, 29)}\u2026` : id;
 }
+function generateStatusToken() {
+  const bytes = new Uint8Array(33);
+  const g2 = globalThis.crypto;
+  if (!g2 || typeof g2.getRandomValues !== "function") {
+    throw new Error("crypto.getRandomValues not available \u2014 cannot mint status_token");
+  }
+  g2.getRandomValues(bytes);
+  const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let n2 = 0n;
+  for (const b2 of bytes) n2 = n2 << 8n | BigInt(b2);
+  if (n2 === 0n) return alpha[0];
+  let out = "";
+  while (n2 > 0n) {
+    out = alpha[Number(n2 % 62n)] + out;
+    n2 /= 62n;
+  }
+  return out;
+}
 async function captureFeedback(ctx, rawArgs) {
   const args = FeedbackCaptureInputSchema.parse(rawArgs ?? {});
   const projectId = args.project_id ?? ctx.projectId ?? null;
@@ -63851,6 +63869,7 @@ async function captureFeedback(ctx, rawArgs) {
       embedding = null;
     }
   }
+  const statusToken = generateStatusToken();
   const metadata = {
     // Lifecycle tier — mirrors the documents metadata.status contract
     // (see packages/shared/src/constants.ts status-model comment). Feedback
@@ -63868,7 +63887,12 @@ async function captureFeedback(ctx, rawArgs) {
     // promotion lifecycle (filled by the clusterer + inbox promote
     // action — Phase 4). Stamped on every row so readers can branch on
     // shape without nullity gymnastics.
-    promotion: { state: null, suggested_target_document_id: null }
+    promotion: { state: null, suggested_target_document_id: null },
+    // Magic-link token so the reporter can revisit /r/<token> later and
+    // see public replies. Long-lived but per-row — revoke by clearing
+    // the field on the documents row. SDK + HTTP responses return it
+    // so widget code can stash it in localStorage.
+    status_token: statusToken
   };
   const title = deriveFeedbackTitle({
     body,
@@ -63903,7 +63927,8 @@ async function captureFeedback(ctx, rawArgs) {
     document_id: row.document_id,
     version_id: row.version_id,
     version_number: row.version_number,
-    tier
+    tier,
+    status_token: statusToken
   };
 }
 var FeedbackSearchArgs = external_exports.object({
@@ -64417,7 +64442,7 @@ function agentDevice() {
   return process.env.MEMLIN_AGENT_DEVICE || os3.hostname() || "unknown";
 }
 function agentVersion() {
-  return "0.1.2";
+  return "0.1.3";
 }
 function agentCapabilities() {
   return AGENT_EXPECTED_CAPABILITIES[resolveHost().kind] ?? ["api", "resolve"];
@@ -64945,13 +64970,18 @@ function log(msg) {
 
 // packages/plugin-core/dist/project-resolver.js
 import { execSync } from "node:child_process";
+import { existsSync, readdirSync } from "node:fs";
 import path5 from "node:path";
 async function resolveProject(api, cwd, configProjectId) {
   const absCwd = path5.resolve(cwd);
-  const remote = readGitRemote(cwd);
+  const remotes = detectGitRemotes(cwd);
   try {
     const result = await api.resolveProject({
-      git_remote: remote,
+      // Primary remote (back-compat with the single-remote server path).
+      git_remote: remotes[0] ?? null,
+      // All detected remotes — for the workspace-root-of-repos case, this is
+      // every sibling repo so the server resolves to the owning project.
+      git_remotes: remotes,
       cwd: absCwd
     });
     if (result.project_id) {
@@ -64985,6 +65015,28 @@ function readGitRemote(cwd) {
   } catch {
     return null;
   }
+}
+var MAX_WORKSPACE_SCAN = 64;
+function detectGitRemotes(cwd) {
+  const enclosing = readGitRemote(cwd);
+  if (enclosing) return [enclosing];
+  const out = [];
+  try {
+    let scanned = 0;
+    for (const entry of readdirSync(cwd, { withFileTypes: true })) {
+      if (scanned >= MAX_WORKSPACE_SCAN) break;
+      if (!entry.isDirectory() || entry.name.startsWith(".") || entry.name === "node_modules") {
+        continue;
+      }
+      scanned++;
+      const child = path5.join(cwd, entry.name);
+      if (!existsSync(path5.join(child, ".git"))) continue;
+      const remote = readGitRemote(child);
+      if (remote && !out.includes(remote)) out.push(remote);
+    }
+  } catch {
+  }
+  return out;
 }
 
 // packages/plugin-core/dist/edit-activity.js
@@ -65324,13 +65376,13 @@ function diffStates(prev, current) {
 
 // packages/plugin-core/dist/local-scan.js
 import { promises as fs6 } from "node:fs";
-import { existsSync } from "node:fs";
+import { existsSync as existsSync2 } from "node:fs";
 import path9 from "node:path";
 async function scanLocal(opts = {}) {
   const out = [];
   const root = opts.rootOverride ?? resolveHost().homeDir();
   const memDir = path9.join(root, "memory");
-  if (existsSync(memDir)) {
+  if (existsSync2(memDir)) {
     for (const file of await fs6.readdir(memDir)) {
       if (!file.endsWith(".md") || file === "MEMORY.md") continue;
       const abs = path9.join(memDir, file);
@@ -65345,12 +65397,12 @@ async function scanLocal(opts = {}) {
     }
   }
   const skillsDir = path9.join(root, "skills");
-  if (existsSync(skillsDir)) {
+  if (existsSync2(skillsDir)) {
     const entries = await fs6.readdir(skillsDir, { withFileTypes: true });
     for (const e2 of entries) {
       if (!e2.isDirectory()) continue;
       const skillMd = path9.join(skillsDir, e2.name, "SKILL.md");
-      if (!existsSync(skillMd)) continue;
+      if (!existsSync2(skillMd)) continue;
       const content = await fs6.readFile(skillMd, "utf8");
       out.push({
         path: `skills/${e2.name}/SKILL.md`,
@@ -65363,7 +65415,7 @@ async function scanLocal(opts = {}) {
   }
   if (opts.includePlans) {
     const plansDir = resolveHost().plansDir();
-    if (existsSync(plansDir)) {
+    if (existsSync2(plansDir)) {
       for (const file of await fs6.readdir(plansDir)) {
         if (!file.endsWith(".md")) continue;
         const abs = path9.join(plansDir, file);
@@ -65516,7 +65568,7 @@ function agentHeaders(accessToken, accountId) {
     "Memlin-Account-Id": accountId,
     "Memlin-Agent-Kind": agentKind(),
     "Memlin-Agent-Device": agentDevice2(),
-    "Memlin-Agent-Version": "0.1.2",
+    "Memlin-Agent-Version": "0.1.3",
     "Memlin-Agent-Capabilities": agentCapabilities2(),
     "Content-Type": "application/json"
   };
@@ -65702,7 +65754,7 @@ var cfg = await resolveConfig().catch((err) => {
   process.exit(1);
 });
 var server = new Server(
-  { name: "memlin", version: "0.1.2" },
+  { name: "memlin", version: "0.1.3" },
   { capabilities: { tools: {} } }
 );
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
