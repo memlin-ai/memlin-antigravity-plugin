@@ -61504,6 +61504,13 @@ function inferBudget(task) {
   }
   return { tokens: BUDGET_STANDARD_TOKENS, tier: "standard" };
 }
+function tierForTokens(tokens) {
+  const midMicroStandard = Math.round((BUDGET_MICRO_TOKENS + BUDGET_STANDARD_TOKENS) / 2);
+  const midStandardDeep = Math.round((BUDGET_STANDARD_TOKENS + BUDGET_DEEP_TOKENS) / 2);
+  if (tokens < midMicroStandard) return "micro";
+  if (tokens < midStandardDeep) return "standard";
+  return "deep";
+}
 async function inferBudgetFromCorpus(ctx, queryVec) {
   if (!queryVec) return null;
   const limit2 = Math.max(BUDGET_CORPUS_MIN_HISTORY, BUDGET_CORPUS_K * 2);
@@ -61534,13 +61541,7 @@ async function inferBudgetFromCorpus(ctx, queryVec) {
   if (!Number.isFinite(avg) || avg <= 0) return null;
   const target = Math.round(avg * 1.25);
   const tokens = Math.min(BUDGET_CEILING, Math.max(BUDGET_FLOOR, target));
-  const midMicroStandard = Math.round((BUDGET_MICRO_TOKENS + BUDGET_STANDARD_TOKENS) / 2);
-  const midStandardDeep = Math.round((BUDGET_STANDARD_TOKENS + BUDGET_DEEP_TOKENS) / 2);
-  let tier;
-  if (tokens < midMicroStandard) tier = "micro";
-  else if (tokens < midStandardDeep) tier = "standard";
-  else tier = "deep";
-  return { tokens, tier };
+  return { tokens, tier: tierForTokens(tokens) };
 }
 var DEFAULT_K_PER_KIND = 20;
 var MIN_CANDIDATES_FOR_RERANK = 4;
@@ -61641,10 +61642,14 @@ async function loadFitnessMultipliers(ctx, candidateIds) {
     for (const inv of invocations) {
       const meta = inv.metadata;
       const items = meta?.items;
+      const itemIds = meta?.item_ids;
+      let ids = [];
       if (Array.isArray(items)) {
-        const ids = items.map((i2) => i2?.id).filter((id) => typeof id === "string");
-        auditToItems.set(inv.id, ids);
+        ids = items.map((i2) => i2?.id).filter((id) => typeof id === "string");
+      } else if (Array.isArray(itemIds)) {
+        ids = itemIds.filter((id) => typeof id === "string");
       }
+      if (ids.length > 0) auditToItems.set(inv.id, ids);
     }
     const posCounts = /* @__PURE__ */ new Map();
     const negCounts = /* @__PURE__ */ new Map();
@@ -62011,6 +62016,7 @@ async function assembleBundle(ctx, rawArgs, audit = {}) {
   let maxTokens;
   let budgetTier;
   let budgetSource;
+  let budgetFloorApplied = false;
   if (args.max_tokens !== void 0) {
     maxTokens = args.max_tokens;
     budgetTier = "explicit";
@@ -62018,8 +62024,11 @@ async function assembleBundle(ctx, rawArgs, audit = {}) {
   } else {
     const fromCorpus = await inferBudgetFromCorpus(ctx, queryVec);
     if (fromCorpus) {
-      maxTokens = fromCorpus.tokens;
-      budgetTier = fromCorpus.tier;
+      const heuristicTokens = inferBudget(args.task).tokens;
+      const floored = Math.max(fromCorpus.tokens, Math.round(heuristicTokens * 0.75));
+      maxTokens = Math.min(BUDGET_CEILING, floored);
+      budgetFloorApplied = maxTokens > fromCorpus.tokens;
+      budgetTier = tierForTokens(maxTokens);
       budgetSource = "corpus";
     } else {
       const fromHeuristic = inferBudget(args.task);
@@ -62162,7 +62171,12 @@ async function assembleBundle(ctx, rawArgs, audit = {}) {
         },
         componentId: null,
         componentName: null,
-        decayMultiplier: decayMultiplierForKind(kind2, r2.updated_at)
+        // Decay off created_at, not updated_at: a corpus-wide maintenance write
+        // (e.g. a backfill) bumps updated_at and would silently reset every
+        // doc's decay clock to "fresh" — exactly what neutralized decay
+        // fleet-wide. created_at is the doc's true age. citation.updated_at
+        // above stays as the "last modified" provenance shown to users.
+        decayMultiplier: decayMultiplierForKind(kind2, r2.created_at)
       });
     }
   }
@@ -62320,7 +62334,7 @@ async function assembleBundle(ctx, rawArgs, audit = {}) {
       const replacementIds = projectBrainPolicy.overridePairs.map((p2) => p2.replacement_document_id).filter((id) => !candidates.some((c2) => c2.id === id));
       if (replacementIds.length > 0) {
         const { data: replacementRows, error: replacementErr } = await ctx.supabase.from("documents").select(
-          `id, title, kind, path, status, updated_at,
+          `id, title, kind, path, status, updated_at, created_at,
              document_versions!documents_current_version_fk ( version_number, author_id )`
         ).in("id", replacementIds);
         if (replacementErr) {
@@ -62346,7 +62360,8 @@ async function assembleBundle(ctx, rawArgs, audit = {}) {
               },
               componentId: null,
               componentName: null,
-              decayMultiplier: decayMultiplierForKind(row.kind, row.updated_at)
+              // created_at, not updated_at — see the search-candidate build.
+              decayMultiplier: decayMultiplierForKind(row.kind, row.created_at)
             });
           }
         }
@@ -63253,11 +63268,12 @@ async function assembleBundle(ctx, rawArgs, audit = {}) {
     brand_guidelines_updated_at: brandGuidelines?.updated_at ?? null,
     cwd: args.cwd ?? null,
     git_remote: args.git_remote ?? null,
-    // Task vector — kept in metadata as a fallback for older readers and
-    // for the brief window between deploy and migration apply. Authoritative
-    // storage (once 0039 lands) is the indexed task_embedding column on
-    // usage_events.
-    task_embedding: taskEmbedding,
+    // task_embedding is deliberately NOT mirrored into metadata: it's a 1536-
+    // float vector — ~86% of each audit row's JSON (~31KB) — and the
+    // authoritative copy is the indexed usage_events.task_embedding COLUMN
+    // (migration 0039, written via p_task_embedding below). Readers
+    // (search_past_resolves, the usage aggregator) use the column; the old
+    // metadata mirror was transitional dead weight on every resolve.
     // Reranker telemetry — present when the 2-stage retrieval ran. Powers
     // offline precision-at-K analysis + future learned-threshold tuning.
     // null entries when the reranker wasn't wired or fell back to cosine.
@@ -63286,6 +63302,9 @@ async function assembleBundle(ctx, rawArgs, audit = {}) {
     // tier distribution.
     budget_tier: budgetTier,
     budget_source: budgetSource,
+    // True when the corpus estimate was raised by the task-shape floor (so the
+    // fleet-wide bundle-token cost of the de-collapse is measurable).
+    budget_floor_applied: budgetFloorApplied,
     // Which ranker drove the search legs. 'semantic' = pure cosine via
     // search_documents (when explicitly requested with hybrid=false);
     // 'hybrid' = cosine + BM25 RRF via search_documents_hybrid. Dashboards can
