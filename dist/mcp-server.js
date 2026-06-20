@@ -64547,7 +64547,7 @@ function agentDevice() {
   return process.env.MEMLIN_AGENT_DEVICE || os3.hostname() || "unknown";
 }
 function agentVersion() {
-  return "0.1.6";
+  return "0.1.7";
 }
 function agentCapabilities() {
   return AGENT_EXPECTED_CAPABILITIES[resolveHost().kind] ?? ["api", "resolve"];
@@ -65676,7 +65676,7 @@ function agentHeaders(accessToken, accountId) {
     "Memlin-Account-Id": accountId,
     "Memlin-Agent-Kind": agentKind(),
     "Memlin-Agent-Device": agentDevice2(),
-    "Memlin-Agent-Version": "0.1.6",
+    "Memlin-Agent-Version": "0.1.7",
     "Memlin-Agent-Capabilities": agentCapabilities2(),
     "Content-Type": "application/json"
   };
@@ -65862,7 +65862,7 @@ var cfg = await resolveConfig().catch((err) => {
   process.exit(1);
 });
 var server = new Server(
-  { name: "memlin", version: "0.1.6" },
+  { name: "memlin", version: "0.1.7" },
   { capabilities: { tools: {} } }
 );
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
