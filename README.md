@@ -6,7 +6,7 @@ parity with the Claude Code and Cursor plugins:
 
 | Capability        | How                                                                                                               |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------- |
-| **MCP tools**     | Remote MCP via `serverUrl` in `~/.gemini/antigravity/mcp_config.json` (`memlin_resolve_task`, `memlin_search`, …) |
+| **MCP tools**     | Local **stdio** MCP server (`"command": "node", "args": ["…/dist/mcp-server.js"]`) written to `~/.gemini/antigravity/mcp_config.json` by `install.sh` — reuses the `memlin login` token, so no per-session OAuth (`memlin_resolve_task`, `memlin_search`, …). Antigravity also supports a **remote** `serverUrl` server (→ `https://memlin.ai/mcp` + a `Bearer` header); the bundle does not use it — see Install below. |
 | **Hooks**         | `SessionStart` / `PreToolHook` / `PostToolHook` / `StopHook` → `@memlin/plugin-core` handlers                     |
 | **Commands**      | `/memlin-*` Antigravity workflows in `.agent/workflows/`                                                          |
 | **Rules / skill** | `.agent/rules/memlin.md` (via `AntigravityAdapter`) + `.agents/skills/memlin/SKILL.md`                            |
@@ -28,8 +28,15 @@ Memlin error never blocks an Antigravity run.
 
 1. **Build:** `pnpm --filter @memlin/antigravity-plugin build`
 2. **MCP:** merge `mcp_config.json` into `~/.gemini/antigravity/mcp_config.json`
-   (Antigravity → Settings → Customizations → Open MCP Config). Complete the
-   browser OAuth, or add `"headers": { "Authorization": "Bearer <Memlin API key>" }`.
+   (in the IDE: Agent panel → **⋯ (Additional Options)** → **MCP Servers** →
+   **Manage MCP Servers** → **View raw config**). The bundled config is a
+   **local stdio** server — `"command": "node", "args": ["<plugin-dir>/dist/mcp-server.js"]`
+   — that reuses the token written by `memlin login`, so there is **no** separate
+   browser OAuth or `Authorization: Bearer` header. `install.sh` substitutes the
+   absolute `<plugin-dir>` path for you.
+   _Prefer a remote server instead?_ Antigravity also accepts the hosted shape —
+   replace the block with `{ "serverUrl": "https://memlin.ai/mcp", "headers": { "Authorization": "Bearer <Memlin API key>" } }` —
+   but the local stdio path above is recommended for full installs (one login, zero prompts).
 3. **Hooks:** copy `hooks.json` to the Antigravity hooks config location,
    replacing `__PLUGIN_DIR__` with this directory's absolute path. `install.sh`
    does the substitution for you.
