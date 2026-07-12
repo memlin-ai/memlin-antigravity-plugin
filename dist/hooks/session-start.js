@@ -430,7 +430,7 @@ function agentDevice() {
 var cachedAgentVersion = null;
 function agentVersion() {
   if (cachedAgentVersion) return cachedAgentVersion;
-  cachedAgentVersion = "0.1.23";
+  cachedAgentVersion = "0.1.24";
   return cachedAgentVersion;
 }
 function agentCapabilities() {
@@ -1707,7 +1707,7 @@ var CONTEXT_NOTE = [
   "Memlin is active for this workspace. The `memlin` MCP server provides",
   "memlin_resolve_task, memlin_search, and memlin_read_memory. Call",
   "memlin_resolve_task with a short task description before non-trivial work",
-  "to load this project's skills, memory, approved goals, and schemas."
+  "to load this project's skills, memory, approved goals, schemas, and decisions."
 ].join(" ");
 function emitContext(parts) {
   const ephemeralMessage = parts.filter(Boolean).join("\n\n");

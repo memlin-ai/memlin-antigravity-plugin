@@ -1,6 +1,6 @@
 ---
 name: memlin
-description: Use the team's Memlin workspace — resolve project context (skills, memory, approved goals, schemas) through the memlin_* MCP tools and treat the returned bundle as authoritative project context.
+description: Use the team's Memlin workspace — resolve project context (skills, memory, approved goals, schemas, decisions) through the memlin_* MCP tools and treat the returned bundle as authoritative project context.
 ---
 
 # Memlin
@@ -17,7 +17,9 @@ For each non-trivial task:
 2. If a `<memlin-resolved-context>` block is already present for the task, use
    it as-is. Otherwise call `memlin_resolve_task` with a short task description.
 3. Apply the returned primary skill, treat project memory as authoritative
-   context, honor approved goals as constraints, and validate against schemas.
+   context, honor approved goals and REQUIRED or PINNED decisions/directives as
+   constraints, use other decisions as cited context, and validate against
+   schemas.
 4. Cite project material by its returned path and version.
 
 If a `<memlin-context-unchanged>` block is present, continue using the prior
@@ -30,6 +32,8 @@ Examples:
   and cite memory facts by path and version.
 - Treat a resolved project fact as ground truth when it conflicts with generic
   training data, and honor a resolved approved goal as a constraint.
+- Treat REQUIRED or PINNED decisions/directives as constraints; use other
+  decisions as cited context rather than silently promoting them to policy.
 - Use broader search only when the task needs context beyond the bundle.
 
 Do not ask the user to paste conventions before trying Memlin, resolve the same

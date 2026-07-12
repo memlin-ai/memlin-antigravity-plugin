@@ -1,16 +1,16 @@
 # Memlin project context
 
 The `memlin` MCP server provides the team's project-scoped skills, memory,
-approved goals, schemas, and handoffs.
+approved goals, schemas, decisions, and handoffs.
 
 ## Available MCP tools
 
-| Tool                  | Purpose                                                           |
-| --------------------- | ----------------------------------------------------------------- |
-| `memlin_resolve_task` | Scope-correct bundle of skills, memory, goals, schemas for a task |
-| `memlin_search`       | Broad natural-language search across the workspace                |
-| `memlin_read_memory`  | Read specific memory facts (with an optional filter)              |
-| `memlin_get_document` | Fetch the full body of a document cited in a bundle               |
+| Tool                  | Purpose                                                                      |
+| --------------------- | ---------------------------------------------------------------------------- |
+| `memlin_resolve_task` | Scope-correct bundle of skills, memory, goals, schemas, decisions for a task |
+| `memlin_search`       | Broad natural-language search across the workspace                           |
+| `memlin_read_memory`  | Read specific memory facts (with an optional filter)                         |
+| `memlin_get_document` | Fetch the full body of a document cited in a bundle                          |
 
 ## Resolve context for each task
 
@@ -25,11 +25,12 @@ approved goals, schemas, and handoffs.
 - A short PreInvocation status note is not a task-specific resolve result.
 
 Apply the primary skill first, use supporting skills where relevant, treat
-project memory as authoritative context, honor approved goals as constraints,
-validate against schemas, and cite project material by its returned path and
-version. Use `memlin_search`, `memlin_read_memory`, or `memlin_get_document`
-only when broader context is needed. If nothing relevant is returned, proceed
-with general expertise and say so.
+project memory as authoritative context, honor approved goals and REQUIRED or
+PINNED decisions/directives as constraints, use other decisions as cited
+context, validate against schemas, and cite project material by its returned
+path and version. Use `memlin_search`, `memlin_read_memory`, or
+`memlin_get_document` only when broader context is needed. If nothing relevant
+is returned, proceed with general expertise and say so.
 
 Memlin authentication is managed by Companion. If authentication is missing,
 ask the user to sign in through Companion. Do not request pasted tokens or

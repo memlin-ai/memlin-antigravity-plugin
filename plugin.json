@@ -1,5 +1,5 @@
 {
   "$schema": "https://antigravity.google/schemas/v1/plugin.json",
   "name": "memlin",
-  "description": "Shared project context, memory, approved goals, and guardrails for Antigravity."
+  "description": "Shared project context, memory, decisions, approved goals, and guardrails for Antigravity."
 }
