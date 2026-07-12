@@ -3578,7 +3578,7 @@ var require_parse = __commonJS({
 var require_gray_matter = __commonJS({
   "node_modules/.pnpm/gray-matter@4.0.3/node_modules/gray-matter/index.js"(exports2, module2) {
     "use strict";
-    var fs6 = __require("fs");
+    var fs7 = __require("fs");
     var sections = require_section_matter();
     var defaults = require_defaults();
     var stringify = require_stringify();
@@ -3662,7 +3662,7 @@ var require_gray_matter = __commonJS({
       return stringify(file, data, options2);
     };
     matter3.read = function(filepath, options2) {
-      const str2 = fs6.readFileSync(filepath, "utf8");
+      const str2 = fs7.readFileSync(filepath, "utf8");
       const file = matter3(str2, options2);
       file.path = filepath;
       return file;
@@ -3689,10 +3689,6 @@ var require_gray_matter = __commonJS({
     module2.exports = matter3;
   }
 });
-
-// packages/plugin-core/dist/stop-handler.js
-import { execSync as execSync2 } from "node:child_process";
-import { promises as fs5 } from "node:fs";
 
 // packages/plugin-core/dist/client.js
 import { promises as fs3 } from "node:fs";
@@ -4105,6 +4101,10 @@ var MemlinApiClient = class {
   /** POST /documents — create or update a document. */
   async writeDocument(input) {
     return this.request("POST", "/documents", input);
+  }
+  /** Atomically compare-and-sync the server-owned project CONTRACT.md. */
+  async syncWorkspaceContract(input) {
+    return this.request("POST", "/workspace-contract/sync", input);
   }
   /** GET /documents/{id} — fetch one doc with body + metadata. */
   async getDocument(documentId) {
@@ -4522,6 +4522,246 @@ function log(msg) {
   }
 }
 
+// packages/plugin-core/dist/plan-sync.js
+import { promises as fs5 } from "node:fs";
+import path7 from "node:path";
+
+// packages/plugin-core/dist/state.js
+import { promises as fs4 } from "node:fs";
+import path6 from "node:path";
+import os6 from "node:os";
+import crypto from "node:crypto";
+var STATE_FILE = path6.join(os6.homedir(), ".config", "memlin", "state.json");
+var EMPTY = { documents: {} };
+async function readState() {
+  try {
+    const raw = await fs4.readFile(STATE_FILE, "utf8");
+    return JSON.parse(raw);
+  } catch {
+    return { ...EMPTY };
+  }
+}
+async function writeState(state) {
+  await fs4.mkdir(path6.dirname(STATE_FILE), { recursive: true });
+  const tmp = `${STATE_FILE}.${process.pid}.tmp`;
+  await fs4.writeFile(tmp, JSON.stringify(state, null, 2), "utf8");
+  await fs4.rename(tmp, STATE_FILE);
+}
+var LOCK_DIR = `${STATE_FILE}.lock`;
+var LOCK_STALE_MS = 2e3;
+var LOCK_WAIT_MS = 2e3;
+var LOCK_RETRY_MS = 50;
+async function acquireStateLock() {
+  const deadline = Date.now() + LOCK_WAIT_MS;
+  for (; ; ) {
+    try {
+      await fs4.mkdir(LOCK_DIR);
+      return true;
+    } catch {
+      try {
+        const stat = await fs4.stat(LOCK_DIR);
+        if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) {
+          await fs4.rmdir(LOCK_DIR).catch(() => {
+          });
+          continue;
+        }
+      } catch {
+        continue;
+      }
+      if (Date.now() >= deadline) return false;
+      await new Promise((r) => setTimeout(r, LOCK_RETRY_MS));
+    }
+  }
+}
+async function releaseStateLock() {
+  await fs4.rmdir(LOCK_DIR).catch(() => {
+  });
+}
+async function updateState(mutate) {
+  const locked = await acquireStateLock();
+  try {
+    const state = await readState();
+    await mutate(state);
+    await writeState(state);
+    return state;
+  } finally {
+    if (locked) await releaseStateLock();
+  }
+}
+function hash(content) {
+  return crypto.createHash("sha256").update(content).digest("hex");
+}
+function getLastResolveForSession(state, sessionId) {
+  if (sessionId) {
+    return state.last_resolves?.[sessionId] ?? (state.last_resolve?.session_id === sessionId ? state.last_resolve : void 0);
+  }
+  return state.last_resolve?.session_id ? void 0 : state.last_resolve;
+}
+
+// packages/plugin-core/dist/plan-sync.js
+function homeBase(host) {
+  return (host ?? resolveHost()).homeDir();
+}
+function plansDir(host) {
+  return (host ?? resolveHost()).plansDir();
+}
+function resolveTargetDocId(stateEntry, binding) {
+  return stateEntry?.document_id || binding?.documentId || void 0;
+}
+async function pushPlanFile(api, file, opts = {}) {
+  const raw = await fs5.readFile(file, "utf8");
+  const { title, body, binding: existingBinding } = parsePlanFile(raw);
+  if (!body.trim()) {
+    throw new Error("plan body is empty");
+  }
+  const relPath = path7.relative(homeBase(opts.host), file);
+  const state = await readState();
+  const existing = state.documents[relPath];
+  const targetDocId = resolveTargetDocId(existing, existingBinding);
+  if (targetDocId) {
+    const result2 = await api.updatePlan(targetDocId, {
+      body,
+      title,
+      commit_message: "edit from claude-code"
+    });
+    await stampPlanFile(file, {
+      documentId: result2.document_id,
+      projectId: existingBinding?.projectId ?? null
+    });
+    const stampedUpdate = await fs5.readFile(file, "utf8").catch(() => raw);
+    await updateState((s) => {
+      s.documents[relPath] = {
+        document_id: result2.document_id,
+        version_id: existing?.version_id ?? "",
+        version_number: result2.version_number,
+        content_hash: hash(stampedUpdate),
+        last_synced_at: (/* @__PURE__ */ new Date()).toISOString(),
+        scope: existing?.scope ?? (existingBinding?.projectId ? "project" : "personal"),
+        kind: "plan"
+      };
+    });
+    return {
+      document_id: result2.document_id,
+      version_number: result2.version_number,
+      created: false
+    };
+  }
+  const result = await api.pushPlan({
+    title,
+    body,
+    cwd: opts.cwd ?? null,
+    git_remote: opts.gitRemote ?? null
+  });
+  await updateState((s) => {
+    s.documents[relPath] = {
+      document_id: result.document_id,
+      version_id: "",
+      version_number: result.version_number,
+      content_hash: hash(raw),
+      last_synced_at: (/* @__PURE__ */ new Date()).toISOString(),
+      scope: result.project_id ? "project" : "personal",
+      kind: "plan"
+    };
+  });
+  await stampPlanFile(file, {
+    documentId: result.document_id,
+    projectId: result.project_id
+  });
+  const stamped = await fs5.readFile(file, "utf8").catch(() => raw);
+  await updateState((s) => {
+    const entry = s.documents[relPath];
+    if (entry) entry.content_hash = hash(stamped);
+  });
+  return {
+    document_id: result.document_id,
+    version_number: result.version_number,
+    created: true
+  };
+}
+async function reconcileKnownPlans(api, opts = {}) {
+  const pushed = [];
+  const skipped = [];
+  const failed = [];
+  let entries;
+  try {
+    entries = await fs5.readdir(plansDir(opts.host));
+  } catch {
+    return { pushed, skipped, failed };
+  }
+  const state = await readState();
+  for (const f of entries) {
+    if (!f.endsWith(".md")) continue;
+    const abs = path7.join(plansDir(opts.host), f);
+    let raw;
+    try {
+      const st = await fs5.stat(abs);
+      if (!st.isFile() || st.size === 0) continue;
+      raw = await fs5.readFile(abs, "utf8");
+    } catch {
+      continue;
+    }
+    const relPath = path7.relative(homeBase(opts.host), abs);
+    const tracked = state.documents[relPath]?.document_id;
+    const { binding } = parsePlanFile(raw);
+    const isKnown = Boolean(tracked) || Boolean(binding?.documentId);
+    if (!isKnown) {
+      skipped.push(f);
+      continue;
+    }
+    if (tracked && state.documents[relPath]?.content_hash === hash(raw)) {
+      skipped.push(f);
+      continue;
+    }
+    try {
+      const result = await pushPlanFile(api, abs, opts);
+      pushed.push(`${f} (v${result.version_number})`);
+    } catch (err) {
+      failed.push(`${f}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  return { pushed, skipped, failed };
+}
+async function stampPlanFile(file, binding) {
+  let raw;
+  try {
+    raw = await fs5.readFile(file, "utf8");
+  } catch {
+    return;
+  }
+  const parsed = parsePlanFile(raw);
+  const stampLine = `<!-- memlin-binding: doc=${binding.documentId} project=${binding.projectId ?? "none"} -->`;
+  const bodyNoStamp = parsed.body.replace(/<!--\s*memlin-binding:[^>]*-->\s*\n?/g, "");
+  const composed = [
+    `# ${parsed.title}`,
+    "",
+    parsed.status ? `<!-- memlin-plan-status: ${parsed.status} -->` : null,
+    stampLine,
+    "",
+    bodyNoStamp.trim(),
+    ""
+  ].filter((l) => l !== null).join("\n");
+  await fs5.writeFile(file, composed, "utf8");
+}
+function parsePlanFile(raw) {
+  const firstNl = raw.indexOf("\n");
+  const first = firstNl === -1 ? raw : raw.slice(0, firstNl);
+  const title = first.replace(/^#\s+/, "").trim() || "(untitled plan)";
+  const rest = firstNl === -1 ? "" : raw.slice(firstNl + 1).trim();
+  const statusMatch = rest.match(/<!--\s*memlin-plan-status:\s*([a-z_]+)\s*-->/);
+  const status = statusMatch ? statusMatch[1] ?? null : null;
+  const bindMatch = rest.match(/<!--\s*memlin-binding:\s*doc=([0-9a-f-]+)\s+project=(\S+)\s*-->/i);
+  const binding = bindMatch ? {
+    documentId: bindMatch[1],
+    projectId: bindMatch[2] === "none" ? null : bindMatch[2] ?? null
+  } : null;
+  const body = rest.replace(/<!--\s*memlin-plan-status:[^>]*-->\s*\n?/g, "").replace(/<!--\s*memlin-binding:[^>]*-->\s*\n?/g, "").trim();
+  return { title, body, status, binding };
+}
+
+// packages/plugin-core/dist/stop-handler.js
+import { execSync as execSync2 } from "node:child_process";
+import { promises as fs6 } from "node:fs";
+
 // packages/plugin-core/dist/outcome-attribution.js
 function normalizeReference(value) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
@@ -4606,11 +4846,11 @@ function attributeAppliedItems(agentMessage, replay) {
   const titleIds = /* @__PURE__ */ new Map();
   const titleVersionIds = /* @__PURE__ */ new Map();
   for (const candidate of candidates) {
-    const path8 = candidate.path ? normalizeReference(candidate.path.replace(/^\.\//, "")) : "";
+    const path9 = candidate.path ? normalizeReference(candidate.path.replace(/^\.\//, "")) : "";
     const title = normalizeReference(candidate.title);
-    addReferenceKey(pathIds, path8, candidate.id);
-    if (path8) {
-      addReferenceKey(pathVersionIds, `${path8}\0${candidate.version_number}`, candidate.id);
+    addReferenceKey(pathIds, path9, candidate.id);
+    if (path9) {
+      addReferenceKey(pathVersionIds, `${path9}\0${candidate.version_number}`, candidate.id);
     }
     addReferenceKey(titleIds, title, candidate.id);
     if (title) {
@@ -4619,14 +4859,14 @@ function attributeAppliedItems(agentMessage, replay) {
   }
   const applied = [];
   for (const candidate of candidates) {
-    const path8 = candidate.path ? normalizeReference(candidate.path.replace(/^\.\//, "")) : "";
+    const path9 = candidate.path ? normalizeReference(candidate.path.replace(/^\.\//, "")) : "";
     const title = normalizeReference(candidate.title);
-    const pathPositions = unnegatedReferencePositions(message, path8);
-    const pathVersionKey = `${path8}\0${candidate.version_number}`;
-    const pathIsUnique = pathIds.get(path8)?.size === 1;
+    const pathPositions = unnegatedReferencePositions(message, path9);
+    const pathVersionKey = `${path9}\0${candidate.version_number}`;
+    const pathIsUnique = pathIds.get(path9)?.size === 1;
     const pathVersionIsUnique = pathVersionIds.get(pathVersionKey)?.size === 1;
     const pathMatch = pathPositions.length > 0 && (pathIsUnique || pathVersionIsUnique && pathPositions.some(
-      (position) => versionMentionNear(message, position, path8.length, candidate.version_number)
+      (position) => versionMentionNear(message, position, path9.length, candidate.version_number)
     ));
     const titlePositions = unnegatedReferencePositions(message, title);
     const titleVersionKey = `${title}\0${candidate.version_number}`;
@@ -4650,39 +4890,10 @@ function attributeAppliedItems(agentMessage, replay) {
   };
 }
 
-// packages/plugin-core/dist/state.js
-import { promises as fs4 } from "node:fs";
-import path6 from "node:path";
-import os6 from "node:os";
-import crypto from "node:crypto";
-var STATE_FILE = path6.join(os6.homedir(), ".config", "memlin", "state.json");
-var EMPTY = { documents: {} };
-async function readState() {
-  try {
-    const raw = await fs4.readFile(STATE_FILE, "utf8");
-    return JSON.parse(raw);
-  } catch {
-    return { ...EMPTY };
-  }
-}
-async function writeState(state) {
-  await fs4.mkdir(path6.dirname(STATE_FILE), { recursive: true });
-  const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-  await fs4.writeFile(tmp, JSON.stringify(state, null, 2), "utf8");
-  await fs4.rename(tmp, STATE_FILE);
-}
-var LOCK_DIR = `${STATE_FILE}.lock`;
-function getLastResolveForSession(state, sessionId) {
-  if (sessionId) {
-    return state.last_resolves?.[sessionId] ?? (state.last_resolve?.session_id === sessionId ? state.last_resolve : void 0);
-  }
-  return state.last_resolve?.session_id ? void 0 : state.last_resolve;
-}
-
 // packages/plugin-core/dist/project-resolver.js
 import { execSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
-import path7 from "node:path";
+import path8 from "node:path";
 var ALLOW_ACCOUNT_MISMATCH_ENV = "MEMLIN_ALLOW_ACCOUNT_MISMATCH";
 function allowAccountMismatch(env = process.env) {
   const v = env[ALLOW_ACCOUNT_MISMATCH_ENV];
@@ -4695,7 +4906,7 @@ function accountBindingHazard(r, opts = {}) {
   return "none";
 }
 async function resolveProject(api, cwd, configProjectId) {
-  const absCwd = path7.resolve(cwd);
+  const absCwd = path8.resolve(cwd);
   const remotes = detectGitRemotes(cwd);
   const hasGitRemote = remotes.length > 0;
   try {
@@ -4754,8 +4965,8 @@ function detectGitRemotes(cwd) {
         continue;
       }
       scanned++;
-      const child = path7.join(cwd, entry.name);
-      if (!existsSync(path7.join(child, ".git"))) continue;
+      const child = path8.join(cwd, entry.name);
+      if (!existsSync(path8.join(child, ".git"))) continue;
       const remote = readGitRemote(child);
       if (remote && !out.includes(remote)) out.push(remote);
     }
@@ -5280,8 +5491,8 @@ function getErrorMap() {
 
 // node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path8, errorMaps, issueData } = params;
-  const fullPath = [...path8, ...issueData.path || []];
+  const { data, path: path9, errorMaps, issueData } = params;
+  const fullPath = [...path9, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -5397,11 +5608,11 @@ var errorUtil;
 
 // node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path8, key) {
+  constructor(parent, value, path9, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path8;
+    this._path = path9;
     this._key = key;
   }
   get path() {
@@ -9410,7 +9621,7 @@ function flattenContent(c) {
 async function readLastExchange(transcriptPath) {
   let raw;
   try {
-    raw = await fs5.readFile(transcriptPath, "utf8");
+    raw = await fs6.readFile(transcriptPath, "utf8");
   } catch {
     return null;
   }
@@ -9654,7 +9865,7 @@ async function maybeScribeSession(ctx, payload) {
   if (!payload.transcript_path) return;
   let raw;
   try {
-    raw = await fs5.readFile(payload.transcript_path, "utf8");
+    raw = await fs6.readFile(payload.transcript_path, "utf8");
   } catch {
     return;
   }
@@ -9769,10 +9980,14 @@ async function runStopHandler(payload) {
 }
 
 // apps/antigravity-plugin/src/hook-io.ts
+var MAX_HOOK_INPUT_BYTES = 1024 * 1024;
 function readHookInput() {
   return new Promise((resolve) => {
     let data = "";
+    let settled = false;
     const done = () => {
+      if (settled) return;
+      settled = true;
       try {
         resolve(data.trim() ? JSON.parse(data) : null);
       } catch {
@@ -9782,7 +9997,14 @@ function readHookInput() {
     const timer = setTimeout(done, 1e3);
     process.stdin.setEncoding("utf8");
     process.stdin.on("data", (chunk) => {
+      if (settled) return;
       data += chunk;
+      if (Buffer.byteLength(data, "utf8") > MAX_HOOK_INPUT_BYTES) {
+        process.stdin.pause();
+        clearTimeout(timer);
+        data = "";
+        done();
+      }
     });
     process.stdin.on("end", () => {
       clearTimeout(timer);
@@ -9799,13 +10021,33 @@ function readHookInput() {
 async function main() {
   process.env.MEMLIN_HOST = "antigravity";
   const input = await readHookInput();
+  const cwd = input?.workspacePaths?.[0] ?? input?.cwd ?? process.cwd();
   await runStopHandler({
-    transcript_path: input?.transcript_path ?? input?.transcript,
-    cwd: input?.cwd,
-    session_id: input?.session_id ?? input?.session
+    transcript_path: input?.transcriptPath ?? input?.transcript_path ?? input?.transcript,
+    cwd,
+    session_id: input?.conversationId ?? input?.session_id ?? input?.session
+  }).catch((err) => {
+    log(`stop handler failed: ${err instanceof Error ? err.message : String(err)}`);
   });
+  try {
+    const ctx = await getApi({ cwd });
+    if (ctx) {
+      const result = await reconcileKnownPlans(ctx.api, { cwd });
+      if (result.pushed.length > 0) {
+        log(`stop plan reconcile: pushed ${result.pushed.length} plan(s)`);
+      }
+      if (result.failed.length > 0) {
+        log(`stop plan reconcile: ${result.failed.length} plan(s) failed`);
+      }
+    }
+  } catch (err) {
+    log(`stop plan reconcile failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
-main().catch(() => process.exit(0));
+void main().then(
+  () => process.stdout.write(JSON.stringify({ decision: "allow" }) + "\n"),
+  () => process.stdout.write(JSON.stringify({ decision: "allow" }) + "\n")
+);
 /*! Bundled license information:
 
 is-extendable/index.js:

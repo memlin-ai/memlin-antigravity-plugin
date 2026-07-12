@@ -178,10 +178,11 @@ var init_companion_client = __esm({
   }
 });
 
-// apps/antigravity-plugin/src/hooks/post-tool-use.ts
-import { execSync as execSync2 } from "node:child_process";
-import { promises as fs7 } from "node:fs";
-import path10 from "node:path";
+// apps/antigravity-plugin/src/hooks/heartbeat.ts
+import crypto from "node:crypto";
+import { promises as fs4 } from "node:fs";
+import os6 from "node:os";
+import path6 from "node:path";
 
 // packages/plugin-core/dist/client.js
 import { promises as fs3 } from "node:fs";
@@ -325,40 +326,6 @@ var AGENT_EXPECTED_CAPABILITIES = {
   // of its own.
   companion: ["cli", "sync", "realtime", "resolve"]
 };
-var PROVIDER_HOSTS = [
-  "github.com",
-  "gitlab.com",
-  "bitbucket.org",
-  "dev.azure.com",
-  "ssh.dev.azure.com",
-  "codeberg.org",
-  "sr.ht",
-  "git.sr.ht"
-];
-function normalizeGitRemote(raw) {
-  if (!raw) return null;
-  let s = raw.trim();
-  if (!s) return null;
-  s = s.replace(/^git@([^:]+):/, "https://$1/");
-  s = s.replace(/^ssh:\/\//, "");
-  s = s.replace(/^https?:\/\//, "");
-  s = s.replace(/^git@/, "");
-  s = s.replace(/\.git$/, "");
-  s = s.replace(/\/$/, "");
-  const slash = s.indexOf("/");
-  if (slash > 0) {
-    const host = s.slice(0, slash);
-    const rest = s.slice(slash);
-    for (const provider of PROVIDER_HOSTS) {
-      if (host === provider) break;
-      if (host.startsWith(provider + "-")) {
-        s = provider + rest;
-        break;
-      }
-    }
-  }
-  return s || null;
-}
 
 // packages/plugin-core/dist/host.js
 import os3 from "node:os";
@@ -580,6 +547,10 @@ var MemlinApiClient = class {
   /** POST /documents — create or update a document. */
   async writeDocument(input) {
     return this.request("POST", "/documents", input);
+  }
+  /** Atomically compare-and-sync the server-owned project CONTRACT.md. */
+  async syncWorkspaceContract(input) {
+    return this.request("POST", "/workspace-contract/sync", input);
   }
   /** GET /documents/{id} — fetch one doc with body + metadata. */
   async getDocument(documentId) {
@@ -997,277 +968,15 @@ function log(msg) {
   }
 }
 
-// packages/plugin-core/dist/project-resolver.js
-import { execSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
-import path6 from "node:path";
-async function resolveProject(api, cwd, configProjectId) {
-  const absCwd = path6.resolve(cwd);
-  const remotes = detectGitRemotes(cwd);
-  const hasGitRemote = remotes.length > 0;
-  try {
-    const result = await api.resolveProject({
-      // Primary remote (back-compat with the single-remote server path).
-      git_remote: remotes[0] ?? null,
-      // All detected remotes — for the workspace-root-of-repos case, this is
-      // every sibling repo so the server resolves to the owning project.
-      git_remotes: remotes,
-      cwd: absCwd
-    });
-    if (result.project_id) {
-      return {
-        project_id: result.project_id,
-        project_name: result.name,
-        account_id: result.account_id,
-        reason: result.reason === "none" ? "config" : result.reason,
-        hasGitRemote
-      };
-    }
-  } catch {
-  }
-  if (configProjectId) {
-    return {
-      project_id: configProjectId,
-      project_name: null,
-      account_id: null,
-      reason: "config",
-      hasGitRemote
-    };
-  }
-  return { project_id: null, project_name: null, account_id: null, reason: "none", hasGitRemote };
-}
-function readGitRemote(cwd) {
-  try {
-    const url = execSync("git remote get-url origin", {
-      cwd,
-      stdio: ["ignore", "pipe", "ignore"],
-      encoding: "utf8"
-    }).trim();
-    return normalizeGitRemote(url);
-  } catch {
-    return null;
-  }
-}
-var MAX_WORKSPACE_SCAN = 64;
-function detectGitRemotes(cwd) {
-  const enclosing = readGitRemote(cwd);
-  if (enclosing) return [enclosing];
-  const out = [];
-  try {
-    let scanned = 0;
-    for (const entry of readdirSync(cwd, { withFileTypes: true })) {
-      if (scanned >= MAX_WORKSPACE_SCAN) break;
-      if (!entry.isDirectory() || entry.name.startsWith(".") || entry.name === "node_modules") {
-        continue;
-      }
-      scanned++;
-      const child = path6.join(cwd, entry.name);
-      if (!existsSync(path6.join(child, ".git"))) continue;
-      const remote = readGitRemote(child);
-      if (remote && !out.includes(remote)) out.push(remote);
-    }
-  } catch {
-  }
-  return out;
-}
-
-// packages/plugin-core/dist/plan-sync.js
-import { promises as fs5 } from "node:fs";
-import path8 from "node:path";
-
-// packages/plugin-core/dist/state.js
-import { promises as fs4 } from "node:fs";
-import path7 from "node:path";
-import os6 from "node:os";
-import crypto from "node:crypto";
-var STATE_FILE = path7.join(os6.homedir(), ".config", "memlin", "state.json");
-var EMPTY = { documents: {} };
-async function readState() {
-  try {
-    const raw = await fs4.readFile(STATE_FILE, "utf8");
-    return JSON.parse(raw);
-  } catch {
-    return { ...EMPTY };
-  }
-}
-async function writeState(state) {
-  await fs4.mkdir(path7.dirname(STATE_FILE), { recursive: true });
-  const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-  await fs4.writeFile(tmp, JSON.stringify(state, null, 2), "utf8");
-  await fs4.rename(tmp, STATE_FILE);
-}
-var LOCK_DIR = `${STATE_FILE}.lock`;
-var LOCK_STALE_MS = 2e3;
-var LOCK_WAIT_MS = 2e3;
-var LOCK_RETRY_MS = 50;
-async function acquireStateLock() {
-  const deadline = Date.now() + LOCK_WAIT_MS;
-  for (; ; ) {
-    try {
-      await fs4.mkdir(LOCK_DIR);
-      return true;
-    } catch {
-      try {
-        const stat = await fs4.stat(LOCK_DIR);
-        if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) {
-          await fs4.rmdir(LOCK_DIR).catch(() => {
-          });
-          continue;
-        }
-      } catch {
-        continue;
-      }
-      if (Date.now() >= deadline) return false;
-      await new Promise((r) => setTimeout(r, LOCK_RETRY_MS));
-    }
-  }
-}
-async function releaseStateLock() {
-  await fs4.rmdir(LOCK_DIR).catch(() => {
-  });
-}
-async function updateState(mutate) {
-  const locked = await acquireStateLock();
-  try {
-    const state = await readState();
-    await mutate(state);
-    await writeState(state);
-    return state;
-  } finally {
-    if (locked) await releaseStateLock();
-  }
-}
-function hash(content) {
-  return crypto.createHash("sha256").update(content).digest("hex");
-}
-
-// packages/plugin-core/dist/plan-sync.js
-function homeBase(host) {
-  return (host ?? resolveHost()).homeDir();
-}
-function resolveTargetDocId(stateEntry, binding) {
-  return stateEntry?.document_id || binding?.documentId || void 0;
-}
-async function pushPlanFile(api, file, opts = {}) {
-  const raw = await fs5.readFile(file, "utf8");
-  const { title, body, binding: existingBinding } = parsePlanFile(raw);
-  if (!body.trim()) {
-    throw new Error("plan body is empty");
-  }
-  const relPath = path8.relative(homeBase(opts.host), file);
-  const state = await readState();
-  const existing = state.documents[relPath];
-  const targetDocId = resolveTargetDocId(existing, existingBinding);
-  if (targetDocId) {
-    const result2 = await api.updatePlan(targetDocId, {
-      body,
-      title,
-      commit_message: "edit from claude-code"
-    });
-    await stampPlanFile(file, {
-      documentId: result2.document_id,
-      projectId: existingBinding?.projectId ?? null
-    });
-    const stampedUpdate = await fs5.readFile(file, "utf8").catch(() => raw);
-    await updateState((s) => {
-      s.documents[relPath] = {
-        document_id: result2.document_id,
-        version_id: existing?.version_id ?? "",
-        version_number: result2.version_number,
-        content_hash: hash(stampedUpdate),
-        last_synced_at: (/* @__PURE__ */ new Date()).toISOString(),
-        scope: existing?.scope ?? (existingBinding?.projectId ? "project" : "personal"),
-        kind: "plan"
-      };
-    });
-    return {
-      document_id: result2.document_id,
-      version_number: result2.version_number,
-      created: false
-    };
-  }
-  const result = await api.pushPlan({
-    title,
-    body,
-    cwd: opts.cwd ?? null,
-    git_remote: opts.gitRemote ?? null
-  });
-  await updateState((s) => {
-    s.documents[relPath] = {
-      document_id: result.document_id,
-      version_id: "",
-      version_number: result.version_number,
-      content_hash: hash(raw),
-      last_synced_at: (/* @__PURE__ */ new Date()).toISOString(),
-      scope: result.project_id ? "project" : "personal",
-      kind: "plan"
-    };
-  });
-  await stampPlanFile(file, {
-    documentId: result.document_id,
-    projectId: result.project_id
-  });
-  const stamped = await fs5.readFile(file, "utf8").catch(() => raw);
-  await updateState((s) => {
-    const entry = s.documents[relPath];
-    if (entry) entry.content_hash = hash(stamped);
-  });
-  return {
-    document_id: result.document_id,
-    version_number: result.version_number,
-    created: true
-  };
-}
-async function stampPlanFile(file, binding) {
-  let raw;
-  try {
-    raw = await fs5.readFile(file, "utf8");
-  } catch {
-    return;
-  }
-  const parsed = parsePlanFile(raw);
-  const stampLine = `<!-- memlin-binding: doc=${binding.documentId} project=${binding.projectId ?? "none"} -->`;
-  const bodyNoStamp = parsed.body.replace(/<!--\s*memlin-binding:[^>]*-->\s*\n?/g, "");
-  const composed = [
-    `# ${parsed.title}`,
-    "",
-    parsed.status ? `<!-- memlin-plan-status: ${parsed.status} -->` : null,
-    stampLine,
-    "",
-    bodyNoStamp.trim(),
-    ""
-  ].filter((l) => l !== null).join("\n");
-  await fs5.writeFile(file, composed, "utf8");
-}
-function parsePlanFile(raw) {
-  const firstNl = raw.indexOf("\n");
-  const first = firstNl === -1 ? raw : raw.slice(0, firstNl);
-  const title = first.replace(/^#\s+/, "").trim() || "(untitled plan)";
-  const rest = firstNl === -1 ? "" : raw.slice(firstNl + 1).trim();
-  const statusMatch = rest.match(/<!--\s*memlin-plan-status:\s*([a-z_]+)\s*-->/);
-  const status = statusMatch ? statusMatch[1] ?? null : null;
-  const bindMatch = rest.match(/<!--\s*memlin-binding:\s*doc=([0-9a-f-]+)\s+project=(\S+)\s*-->/i);
-  const binding = bindMatch ? {
-    documentId: bindMatch[1],
-    projectId: bindMatch[2] === "none" ? null : bindMatch[2] ?? null
-  } : null;
-  const body = rest.replace(/<!--\s*memlin-plan-status:[^>]*-->\s*\n?/g, "").replace(/<!--\s*memlin-binding:[^>]*-->\s*\n?/g, "").trim();
-  return { title, body, status, binding };
-}
-
 // apps/antigravity-plugin/src/hooks/heartbeat.ts
-import crypto2 from "node:crypto";
-import { promises as fs6 } from "node:fs";
-import os7 from "node:os";
-import path9 from "node:path";
 var DEFAULT_THROTTLE_MS = 6e4;
 function statePath(cwd) {
-  const key = crypto2.createHash("sha256").update(cwd).digest("hex").slice(0, 16);
-  return path9.join(os7.tmpdir(), `memlin-antigravity-heartbeat-${key}.json`);
+  const key = crypto.createHash("sha256").update(cwd).digest("hex").slice(0, 16);
+  return path6.join(os6.tmpdir(), `memlin-antigravity-heartbeat-${key}.json`);
 }
 async function recentlySent(file, throttleMs) {
   try {
-    const raw = await fs6.readFile(file, "utf8");
+    const raw = await fs4.readFile(file, "utf8");
     const parsed = JSON.parse(raw);
     return typeof parsed.sent_at === "number" && Date.now() - parsed.sent_at < throttleMs;
   } catch {
@@ -1282,7 +991,7 @@ async function recordAntigravityActivity(cwd, reason, opts = {}) {
     const ctx = await getApi({ cwd });
     if (!ctx) return;
     await ctx.api.getAccount();
-    await fs6.writeFile(file, JSON.stringify({ sent_at: Date.now(), reason }), "utf8");
+    await fs4.writeFile(file, JSON.stringify({ sent_at: Date.now(), reason }), "utf8");
     log(`antigravity activity recorded: ${reason}`);
   } catch (err) {
     log(`antigravity activity failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -1290,10 +999,14 @@ async function recordAntigravityActivity(cwd, reason, opts = {}) {
 }
 
 // apps/antigravity-plugin/src/hook-io.ts
+var MAX_HOOK_INPUT_BYTES = 1024 * 1024;
 function readHookInput() {
   return new Promise((resolve) => {
     let data = "";
+    let settled = false;
     const done = () => {
+      if (settled) return;
+      settled = true;
       try {
         resolve(data.trim() ? JSON.parse(data) : null);
       } catch {
@@ -1303,7 +1016,14 @@ function readHookInput() {
     const timer = setTimeout(done, 1e3);
     process.stdin.setEncoding("utf8");
     process.stdin.on("data", (chunk) => {
+      if (settled) return;
       data += chunk;
+      if (Buffer.byteLength(data, "utf8") > MAX_HOOK_INPUT_BYTES) {
+        process.stdin.pause();
+        clearTimeout(timer);
+        data = "";
+        done();
+      }
     });
     process.stdin.on("end", () => {
       clearTimeout(timer);
@@ -1317,117 +1037,13 @@ function readHookInput() {
 }
 
 // apps/antigravity-plugin/src/hooks/post-tool-use.ts
-var GIT_COMMIT_RE = /\bgit\s+(?:-[A-Za-z]+\s+)*commit\b/;
-var DIFF_MAX_BYTES = 2e5;
-function toolInput(p) {
-  return p.tool_input ?? p.input ?? {};
-}
-async function maybeScribeCommit(ctx, payload) {
-  const cmd = toolInput(payload).command ?? "";
-  if (!GIT_COMMIT_RE.test(cmd)) return;
-  if (/--no-edit\b/.test(cmd) || /\bmerge\b.*--no-ff/.test(cmd)) return;
-  const cwd = payload.cwd ?? process.cwd();
-  let commitSha = "";
-  let commitMessage = "";
-  let diffStat = "";
-  let diffBody = "";
-  try {
-    commitSha = execSync2("git rev-parse HEAD", { cwd, encoding: "utf8" }).trim();
-    commitMessage = execSync2("git log -1 --format=%B HEAD", { cwd, encoding: "utf8" }).trim();
-    diffStat = execSync2("git show --stat --format= HEAD", { cwd, encoding: "utf8" }).trim();
-    const buf = execSync2("git show --format= HEAD", {
-      cwd,
-      encoding: "utf8",
-      maxBuffer: DIFF_MAX_BYTES * 2
-    });
-    diffBody = buf.length > DIFF_MAX_BYTES ? buf.slice(0, DIFF_MAX_BYTES) : buf;
-  } catch (err) {
-    log(`diff scribe: read failed: ${err instanceof Error ? err.message : String(err)}`);
-    return;
-  }
-  if (!commitSha || !commitMessage) return;
-  let accountOverride;
-  let repoSlug = null;
-  try {
-    const resolved = await resolveProject(ctx.api, cwd, ctx.config.project_id);
-    if (resolved.account_id && resolved.account_id !== ctx.config.account_id) {
-      accountOverride = resolved.account_id;
-    }
-    try {
-      repoSlug = normalizeGitRemote(
-        execSync2("git remote get-url origin", {
-          cwd,
-          stdio: ["ignore", "pipe", "ignore"],
-          encoding: "utf8"
-        }).trim()
-      );
-    } catch {
-    }
-  } catch {
-  }
-  try {
-    const result = await ctx.api.scribeDiff(
-      {
-        commit_sha: commitSha,
-        commit_message: commitMessage,
-        diff_stat: diffStat,
-        diff_body: diffBody,
-        repo_slug: repoSlug
-      },
-      accountOverride ? { accountId: accountOverride } : {}
-    );
-    if (result.proposals_persisted > 0) {
-      log(`diff scribe: ${result.proposals_persisted} proposal(s) for ${commitSha.slice(0, 7)}`);
-    }
-  } catch (err) {
-    log(`diff scribe call failed: ${err instanceof Error ? err.message : String(err)}`);
-  }
-}
-async function maybePushPlan(ctx, payload) {
-  const file = toolInput(payload).file_path ?? toolInput(payload).path;
-  if (!file) return;
-  const abs = path10.resolve(file);
-  const plansDir = resolveHost().plansDir();
-  if (!abs.startsWith(plansDir + path10.sep) || !abs.endsWith(".md")) return;
-  try {
-    const st = await fs7.stat(abs);
-    if (!st.isFile() || st.size === 0) return;
-  } catch {
-    return;
-  }
-  const cwd = payload.cwd ?? process.cwd();
-  let gitRemote = null;
-  try {
-    gitRemote = normalizeGitRemote(
-      execSync2("git remote get-url origin", {
-        cwd,
-        stdio: ["ignore", "pipe", "ignore"],
-        encoding: "utf8"
-      }).trim()
-    );
-  } catch {
-  }
-  try {
-    const result = await pushPlanFile(ctx.api, abs, { cwd, gitRemote });
-    log(
-      `pushed plan ${path10.basename(abs)} (${result.created ? "new" : "v" + result.version_number})`
-    );
-  } catch (err) {
-    log(`plan push failed: ${err instanceof Error ? err.message : String(err)}`);
-  }
-}
 async function main() {
   process.env.MEMLIN_HOST = "antigravity";
-  const payload = await readHookInput() ?? {};
-  const cwd = payload.cwd ?? process.cwd();
-  await recordAntigravityActivity(cwd, "post-tool-hook");
-  const ctx = await getApi({ cwd });
-  if (!ctx) return;
-  const cmd = toolInput(payload).command ?? "";
-  if (cmd && GIT_COMMIT_RE.test(cmd)) {
-    await maybeScribeCommit(ctx, payload);
-    return;
-  }
-  await maybePushPlan(ctx, payload);
+  const input = await readHookInput();
+  const cwd = input?.workspacePaths?.[0] ?? process.cwd();
+  await recordAntigravityActivity(cwd, "post-tool-use");
 }
-main().catch(() => process.exit(0));
+void main().then(
+  () => process.stdout.write("{}\n"),
+  () => process.stdout.write("{}\n")
+);

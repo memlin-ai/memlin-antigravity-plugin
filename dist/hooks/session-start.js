@@ -576,6 +576,10 @@ var MemlinApiClient = class {
   async writeDocument(input) {
     return this.request("POST", "/documents", input);
   }
+  /** Atomically compare-and-sync the server-owned project CONTRACT.md. */
+  async syncWorkspaceContract(input) {
+    return this.request("POST", "/workspace-contract/sync", input);
+  }
   /** GET /documents/{id} — fetch one doc with body + metadata. */
   async getDocument(documentId) {
     return this.request("GET", `/documents/${encodeURIComponent(documentId)}`);
@@ -1661,10 +1665,14 @@ function setLastPlanPullCursor(state, at) {
 }
 
 // apps/antigravity-plugin/src/hook-io.ts
+var MAX_HOOK_INPUT_BYTES = 1024 * 1024;
 function readHookInput() {
   return new Promise((resolve) => {
     let data = "";
+    let settled = false;
     const done = () => {
+      if (settled) return;
+      settled = true;
       try {
         resolve(data.trim() ? JSON.parse(data) : null);
       } catch {
@@ -1674,7 +1682,14 @@ function readHookInput() {
     const timer = setTimeout(done, 1e3);
     process.stdin.setEncoding("utf8");
     process.stdin.on("data", (chunk) => {
+      if (settled) return;
       data += chunk;
+      if (Buffer.byteLength(data, "utf8") > MAX_HOOK_INPUT_BYTES) {
+        process.stdin.pause();
+        clearTimeout(timer);
+        data = "";
+        done();
+      }
     });
     process.stdin.on("end", () => {
       clearTimeout(timer);
@@ -1695,17 +1710,18 @@ var CONTEXT_NOTE = [
   "to load this project's skills, memory, approved goals, and schemas."
 ].join(" ");
 function emitContext(parts) {
-  const additionalContext = parts.filter(Boolean).join("\n\n");
+  const ephemeralMessage = parts.filter(Boolean).join("\n\n");
   process.stdout.write(
     JSON.stringify({
-      hookSpecificOutput: { hookEventName: "SessionStart", additionalContext }
+      injectSteps: ephemeralMessage ? [{ ephemeralMessage }] : []
     })
   );
 }
 async function main() {
   process.env.MEMLIN_HOST = "antigravity";
   const input = await readHookInput();
-  const cwd = input?.cwd ?? process.cwd();
+  if ((input?.invocationNum ?? 0) !== 0) return emitContext([]);
+  const cwd = input?.workspacePaths?.[0] ?? process.cwd();
   const ctx = await getApi({ cwd });
   if (!ctx) {
     log("not configured \u2014 skipping pull");
@@ -1785,7 +1801,7 @@ async function main() {
   try {
     const unbound = await listUnboundPlans();
     if (unbound.length > 0) {
-      unboundNudge = `Memlin: ${unbound.length} local plan(s) not synced (unknown project). Run /memlin-bind-plans to review.`;
+      unboundNudge = `Memlin: ${unbound.length} local plan(s) are not synced because their project is unknown. Review project binding in Companion.`;
     }
   } catch {
   }
@@ -1793,7 +1809,7 @@ async function main() {
   try {
     const { count } = await api.listInbox();
     if (count > 0) {
-      inboxNudge = `Memlin: ${count} proposal${count === 1 ? "" : "s"} waiting in your inbox \u2014 run /memlin-inbox.`;
+      inboxNudge = `Memlin: ${count} proposal${count === 1 ? "" : "s"} waiting for review in your Memlin inbox.`;
     }
   } catch {
   }

@@ -1,33 +1,19 @@
 {
-  "hooks": {
-    "SessionStart": [
+  "memlin": {
+    "PreInvocation": [
       {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"__PLUGIN_DIR__/dist/hooks/session-start.js\"",
-            "timeout": 15
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"__PLUGIN_DIR__/dist/hooks/user-prompt-submit.js\"",
-            "timeout": 10
-          }
-        ]
+        "type": "command",
+        "command": "node \"./dist/hooks/session-start.js\"",
+        "timeout": 15
       }
     ],
     "PreToolUse": [
       {
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"__PLUGIN_DIR__/dist/hooks/pre-tool-use.js\"",
+            "command": "node \"./dist/hooks/pre-tool-use.js\"",
             "timeout": 5
           }
         ]
@@ -35,10 +21,11 @@
     ],
     "PostToolUse": [
       {
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"__PLUGIN_DIR__/dist/hooks/post-tool-use.js\"",
+            "command": "node \"./dist/hooks/post-tool-use.js\"",
             "timeout": 10
           }
         ]
@@ -46,13 +33,9 @@
     ],
     "Stop": [
       {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"__PLUGIN_DIR__/dist/hooks/stop.js\"",
-            "timeout": 20
-          }
-        ]
+        "type": "command",
+        "command": "node \"./dist/hooks/stop.js\"",
+        "timeout": 20
       }
     ]
   }

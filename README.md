@@ -1,74 +1,55 @@
 # Memlin for Google Antigravity
 
-Full-capability Memlin plugin for the **Antigravity IDE** (the agent-first IDE
-from Google, built by the former Windsurf/Codeium team). Targets capability
-parity with the Claude Code and Cursor plugins:
+Memlin is packaged as a native Antigravity plugin: one directory containing a
+root `plugin.json`, `hooks.json`, `mcp_config.json`, `skills/`, and `rules/`.
+The runnable hooks and MCP server are bundled under `dist/`, so an installed
+plugin has no monorepo or `node_modules` dependency.
 
-| Capability        | How                                                                                                               |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------- |
-| **MCP tools**     | Local **stdio** MCP server (`"command": "node", "args": ["…/dist/mcp-server.js"]`) written to `~/.gemini/antigravity/mcp_config.json` by `install.sh` — reuses the `memlin login` token, so no per-session OAuth (`memlin_resolve_task`, `memlin_search`, …). Antigravity also supports a **remote** `serverUrl` server (→ `https://memlin.ai/mcp` + a `Bearer` header); the bundle does not use it — see Install below. |
-| **Hooks**         | `SessionStart` / `PreToolHook` / `PostToolHook` / `StopHook` → `@memlin/plugin-core` handlers                     |
-| **Commands**      | `/memlin-*` Antigravity workflows in `.agent/workflows/`                                                          |
-| **Rules / skill** | `.agent/rules/memlin.md` (via `AntigravityAdapter`) + `.agents/skills/memlin/SKILL.md`                            |
-| **Local sync**    | `SessionStart` pulls plans, `PostToolHook` pushes plan edits, all via `@memlin/plugin-core/plan-sync`             |
-| **Scribe**        | `StopHook` runs the session scribe + heartbeat; `PostToolHook` scribes `git commit`s                              |
+## What it installs
 
-The hook handlers are the same shared `@memlin/plugin-core` handlers Claude Code
-and Codex use, with `MEMLIN_HOST=antigravity` so on-disk state resolves under
-`~/.config/memlin/` (see `AntigravityHost`). Everything **fails open** — a
-Memlin error never blocks an Antigravity run.
+- The local `memlin` MCP server and its resolve, search, memory, document, and
+  handoff tools.
+- A Memlin skill and rule that tell Antigravity when and how to resolve project
+  context.
+- Documented `PreInvocation`, `PreToolUse`, `PostToolUse`, and `Stop` hooks.
 
-## Install
+`PreInvocation` performs the initial best-effort project/plan sync and injects
+an ephemeral status note. `PreToolUse` maps Memlin guardrails to Antigravity's
+native allow/deny/ask response. `PostToolUse` records a throttled heartbeat.
+`Stop` runs best-effort memory/session scribing. Every hook fails open.
+
+Antigravity does not include tool arguments in its documented `PostToolUse`
+payload, so this adapter does not guess at commit or changed-file details.
+
+## Build and install
+
+From the Memlin source repository:
 
 ```sh
-./install.sh
+bash scripts/build-antigravity-plugin.sh
+agy plugin install ./antigravity-plugin-out
 ```
 
-…or manually:
+The output is the same directory that Companion downloads, verifies, and hands
+to Antigravity's native plugin installer. The checked-in `install.sh` is only a
+source-tree convenience wrapper; it never edits workspace files or merges user
+configuration.
 
-1. **Build:** `pnpm --filter @memlin/antigravity-plugin build`
-2. **MCP:** merge `mcp_config.json` into `~/.gemini/antigravity/mcp_config.json`
-   (in the IDE: Agent panel → **⋯ (Additional Options)** → **MCP Servers** →
-   **Manage MCP Servers** → **View raw config**). The bundled config is a
-   **local stdio** server — `"command": "node", "args": ["<plugin-dir>/dist/mcp-server.js"]`
-   — that reuses the token written by `memlin login`, so there is **no** separate
-   browser OAuth or `Authorization: Bearer` header. `install.sh` substitutes the
-   absolute `<plugin-dir>` path for you.
-   _Prefer a remote server instead?_ Antigravity also accepts the hosted shape —
-   replace the block with `{ "serverUrl": "https://memlin.ai/mcp", "headers": { "Authorization": "Bearer <Memlin API key>" } }` —
-   but the local stdio path above is recommended for full installs (one login, zero prompts).
-3. **Hooks:** copy `hooks.json` to the Antigravity hooks config location,
-   replacing `__PLUGIN_DIR__` with this directory's absolute path. `install.sh`
-   does the substitution for you.
-4. **Skill:** copy `skills/memlin/` into `~/.gemini/antigravity/skills/memlin/`
-   (global) or `<project>/.agents/skills/memlin/` (workspace).
-5. **Workflows:** copy `workflows/*.md` into `<project>/.agent/workflows/`.
-6. **Sign in:** run `memlin login` (the installer provisions the `memlin`
-   launcher on PATH; for a manual install run
-   `node "<plugin-dir>/dist/cli/login.js"`). Writes
-   `~/.config/memlin/token.json`, auto-refreshed.
+For the Antigravity IDE without the CLI, Google documents placing the built
+`memlin` directory under `~/.gemini/config/plugins/`. Workspace-scoped plugins
+belong under `<workspace>/.agents/plugins/` and should only be added with
+separate project consent.
 
-Rules (`.agent/rules/memlin.md`) are written automatically by the
-`AntigravityAdapter` on sync — no manual step.
+Node.js 20 or newer is required by the bundled local hooks and MCP server. The
+plugin reuses the account token managed by Companion under
+`~/.config/memlin/`; it does not embed credentials.
 
-## Verify against your Antigravity build
+## Verify
 
-The hook **handlers** are schema-stable (stdin JSON → `@memlin/plugin-core` →
-stdout, fail-open). The `hooks.json` wiring was reverse-engineered from the
-bundled `language_server` (Go/Codeium engine) and is evidence-based:
+After install, restart or reload Antigravity, then use `/hooks` and `/mcp` to
+confirm the Memlin hook namespace and MCP server are loaded. Run a non-trivial
+task and call `memlin_resolve_task` to verify project-scoped context.
 
-- **Config file:** `hooks.json` — confirmed as a literal string in the engine.
-- **Event keys:** `SessionStart` / `PreToolUse` / `PostToolUse` / `Stop` — the
-  Claude-Code-standard names. `PreToolUse`/`PostToolUse` appear as literal
-  strings in `language_server`; the engine's _internal_ Go types are
-  `PreToolHook`/`PostToolHook`/`StopHook`, but the user-facing config keys are
-  the `*Use`/`Stop` forms (so this file matches `apps/cli-plugin/hooks/hooks.json`).
-- **Schema:** `{ "hooks": { "<Event>": [{ "hooks": [{ "type": "command",
-"command": "…", "timeout": N }] }] } }` — fields `event`/`matcher`/`command`/
-  `timeout` confirmed in the `jsonhook.JSONHookSpec` parser.
-
-One thing still worth a **2-minute empirical check**: the exact `hooks.json`
-**location** — global `~/.gemini/antigravity/hooks.json` (where `install.sh`
-writes) vs a project `.agent/hooks.json`. Install, restart Antigravity, run any
-tool, then `tail ~/.config/memlin/` logs or watch Connected agents turn healthy.
-(`timeout` may be `timeout_millis` on some builds.)
+References: [Antigravity plugins](https://www.antigravity.google/docs/plugins),
+[hooks](https://www.antigravity.google/docs/hooks), and
+[CLI plugins](https://antigravity.google/docs/cli-plugins).

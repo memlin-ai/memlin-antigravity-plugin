@@ -8710,6 +8710,10 @@ var MemlinApiClient = class {
   async writeDocument(input) {
     return this.request("POST", "/documents", input);
   }
+  /** Atomically compare-and-sync the server-owned project CONTRACT.md. */
+  async syncWorkspaceContract(input) {
+    return this.request("POST", "/workspace-contract/sync", input);
+  }
   /** GET /documents/{id} — fetch one doc with body + metadata. */
   async getDocument(documentId) {
     return this.request("GET", `/documents/${encodeURIComponent(documentId)}`);
@@ -9517,10 +9521,14 @@ async function runPreToolUseHandler(payload) {
 }
 
 // apps/antigravity-plugin/src/hook-io.ts
+var MAX_HOOK_INPUT_BYTES = 1024 * 1024;
 function readHookInput() {
   return new Promise((resolve) => {
     let data = "";
+    let settled = false;
     const done = () => {
+      if (settled) return;
+      settled = true;
       try {
         resolve(data.trim() ? JSON.parse(data) : null);
       } catch {
@@ -9530,7 +9538,14 @@ function readHookInput() {
     const timer = setTimeout(done, 1e3);
     process.stdin.setEncoding("utf8");
     process.stdin.on("data", (chunk) => {
+      if (settled) return;
       data += chunk;
+      if (Buffer.byteLength(data, "utf8") > MAX_HOOK_INPUT_BYTES) {
+        process.stdin.pause();
+        clearTimeout(timer);
+        data = "";
+        done();
+      }
     });
     process.stdin.on("end", () => {
       clearTimeout(timer);
@@ -9545,33 +9560,25 @@ function readHookInput() {
 
 // apps/antigravity-plugin/src/hooks/pre-tool-use.ts
 function emitAllow() {
+  process.stdout.write(JSON.stringify({ decision: "allow" }) + "\n");
   exitClean(0);
 }
 function emit(decision, reason) {
-  process.stdout.write(
-    JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: "PreToolUse",
-        permissionDecision: decision,
-        permissionDecisionReason: reason
-      }
-    }) + "\n"
-  );
+  process.stdout.write(JSON.stringify({ decision, reason }) + "\n");
   exitClean(0);
 }
 async function main() {
   process.env.MEMLIN_HOST = "antigravity";
   const payload = await readHookInput() ?? {};
-  const toolName = payload.tool_name ?? payload.name;
+  const toolName = payload.toolCall?.name;
   if (!toolName) return emitAllow();
-  const sessionId = payload.session_id ?? payload.session;
   let verdict;
   try {
     verdict = await runPreToolUseHandler({
       tool_name: toolName,
-      tool_input: payload.tool_input ?? payload.input ?? {},
-      cwd: payload.cwd ?? process.cwd(),
-      ...sessionId !== void 0 ? { session_id: sessionId } : {}
+      tool_input: payload.toolCall?.args ?? {},
+      cwd: payload.workspacePaths?.[0] ?? process.cwd(),
+      ...payload.conversationId !== void 0 ? { session_id: payload.conversationId } : {}
     });
   } catch (err) {
     log(

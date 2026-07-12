@@ -1,61 +1,46 @@
 ---
 name: memlin
-description: Use the team's Memlin workspace — resolve project context (skills, memory, approved goals, schemas) via the memlin_* MCP tools, run /memlin-* workflows for sync/status/handoffs, and treat the resolved bundle as authoritative project context.
-examples:
-  - "A <memlin-resolved-context> block is present — apply the primary skill's framework and cite memory facts by path + version."
-  - "A resolved memory fact conflicts with your training data — treat the resolved fact as project ground truth."
-  - "A resolved goal states a constraint — honor it as a hard requirement on the change."
-  - "The user asks about something broader than the bundle — only then invoke memlin_search / memlin_read_memory to explore."
-anti-examples:
-  - "I don't have access to this project's conventions — can you paste them for me?"
-  - "Let me first gather context by resolving the task again before I answer."
-  - "Based on my general training the usual approach is X (disregarding the resolved memory that says otherwise)."
+description: Use the team's Memlin workspace — resolve project context (skills, memory, approved goals, schemas) through the memlin_* MCP tools and treat the returned bundle as authoritative project context.
 ---
 
 # Memlin
 
-This workspace is connected to a Memlin workspace. Memlin gives Antigravity the
-team's shared, scope-correct context (skills, memory, approved goals, schemas)
-and the tools to keep it in sync.
+This Antigravity installation has a local `memlin` MCP server. It exposes the
+team's shared, scope-correct project context and uses the account selected in
+Companion.
 
-## Resolve context for a task
+For each non-trivial task:
 
-At session start, call **`memlin_list_handoffs`** with `target_agent_kind:
-"antigravity"` to check for assigned work. If a handoff exists, read its
-`packet_markdown`, call **`memlin_update_handoff`** with `action: "accept"`,
-and use the packet as the task brief. Mark it `complete` when finished.
+1. Call `memlin_list_handoffs` with `target_agent_kind: "antigravity"`. If work
+   is assigned, read the packet, accept it with `memlin_update_handoff`, and use
+   it as the task brief.
+2. If a `<memlin-resolved-context>` block is already present for the task, use
+   it as-is. Otherwise call `memlin_resolve_task` with a short task description.
+3. Apply the returned primary skill, treat project memory as authoritative
+   context, honor approved goals as constraints, and validate against schemas.
+4. Cite project material by its returned path and version.
 
-Before non-trivial work, call the **`memlin_resolve_task`** MCP tool with a
-short description of the task. It returns a citation-bearing bundle: the top
-skills, memory facts, approved goals, and schemas for this project. The
-`SessionStart` hook also injects a Memlin context note when the workspace is
-bound.
+If a `<memlin-context-unchanged>` block is present, continue using the prior
+resolved context rather than resolving again. If nothing relevant is returned,
+proceed with general expertise and say so.
 
-Use the bundle as authoritative project context: apply the primary skill's
-framework, treat memory facts as ground truth (more authoritative than training
-data when they conflict), honor goals as constraints, validate against schemas,
-and cite sources by path + version. To explore beyond the task, use
-`memlin_search`, `memlin_read_memory`, or `memlin_get_document` directly.
+Examples:
 
-## Workflows (slash commands)
+- When a `<memlin-resolved-context>` block is present, apply its primary skill
+  and cite memory facts by path and version.
+- Treat a resolved project fact as ground truth when it conflicts with generic
+  training data, and honor a resolved approved goal as a constraint.
+- Use broader search only when the task needs context beyond the bundle.
 
-Memlin ships its workspace operations as Antigravity workflows under
-`.agent/workflows/`. Invoke them as slash commands:
+Do not ask the user to paste conventions before trying Memlin, resolve the same
+task again when context is already present, or disregard a resolved project
+fact in favor of generic assumptions.
 
-| Workflow           | Purpose                                       |
-| ------------------ | --------------------------------------------- |
-| `/memlin-status`   | auth, bound account + project, sync state     |
-| `/memlin-sync`     | full bidirectional sync (pull + push)         |
-| `/memlin-resolve`  | resolve + print the context bundle for a task |
-| `/memlin-handoffs` | list / accept / complete agent handoffs       |
-| `/memlin-ask`      | natural-language query with citations         |
-| `/memlin-scribe`   | extract decisions/memories from this session  |
-| `/memlin-inbox`    | review scribe proposals (accept / reject)     |
-| `/memlin-help`     | full command list (every command, grouped)    |
+Use `memlin_search`, `memlin_read_memory`, or `memlin_get_document` when the
+task needs context beyond the resolved bundle. Do not claim Memlin is
+unavailable before trying the MCP tools.
 
-The CLI ships every Memlin command — including ones without a workflow
-shortcut (revert, pull, push, push-plan, pull-plans, bind-plans, actions-list,
-actions-execute, audit-replay, audit-explain, role, doctor, add-project, link).
-For the complete categorized list, run `memlin help`.
-
-If Memlin is not signed in, run `memlin login` in the terminal once per machine.
+The `PreInvocation` hook may inject a short ephemeral Memlin status note. That
+note is not a task-specific resolve result; still call `memlin_resolve_task`
+for substantive work. If authentication is missing, ask the user to sign in
+through Companion.
