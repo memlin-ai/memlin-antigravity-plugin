@@ -178,7 +178,7 @@ var init_companion_client = __esm({
   }
 });
 
-// apps/antigravity-plugin/src/hooks/heartbeat.ts
+// packages/plugin-core/dist/heartbeat.js
 import crypto from "node:crypto";
 import { promises as fs4 } from "node:fs";
 import os6 from "node:os";
@@ -1247,11 +1247,11 @@ function log(msg) {
   }
 }
 
-// apps/antigravity-plugin/src/hooks/heartbeat.ts
+// packages/plugin-core/dist/heartbeat.js
 var DEFAULT_THROTTLE_MS = 6e4;
-function statePath(cwd) {
+function statePath(cwd, host) {
   const key = crypto.createHash("sha256").update(cwd).digest("hex").slice(0, 16);
-  return path6.join(os6.tmpdir(), `memlin-antigravity-heartbeat-${key}.json`);
+  return path6.join(os6.tmpdir(), `memlin-${host}-heartbeat-${key}.json`);
 }
 async function recentlySent(file, throttleMs) {
   try {
@@ -1262,19 +1262,25 @@ async function recentlySent(file, throttleMs) {
     return false;
   }
 }
-async function recordAntigravityActivity(cwd, reason, opts = {}) {
+async function recordInstallHeartbeat(cwd, reason, opts = {}) {
+  const host = opts.host ?? resolveHost().kind;
   const throttleMs = opts.throttleMs ?? DEFAULT_THROTTLE_MS;
-  const file = statePath(cwd);
+  const file = statePath(cwd, host);
   if (await recentlySent(file, throttleMs)) return;
   try {
     const ctx = await getApi({ cwd });
     if (!ctx) return;
     await ctx.api.getAccount();
-    await fs4.writeFile(file, JSON.stringify({ sent_at: Date.now(), reason }), "utf8");
-    log(`antigravity activity recorded: ${reason}`);
+    await fs4.writeFile(file, JSON.stringify({ sent_at: Date.now(), reason, host }), "utf8");
+    log(`${host} activity recorded: ${reason}`);
   } catch (err) {
-    log(`antigravity activity failed: ${err instanceof Error ? err.message : String(err)}`);
+    log(`${host} activity failed: ${err instanceof Error ? err.message : String(err)}`);
   }
+}
+
+// apps/antigravity-plugin/src/hooks/heartbeat.ts
+async function recordAntigravityActivity(cwd, reason, opts = {}) {
+  await recordInstallHeartbeat(cwd, reason, { ...opts, host: "antigravity" });
 }
 
 // apps/antigravity-plugin/src/hook-io.ts

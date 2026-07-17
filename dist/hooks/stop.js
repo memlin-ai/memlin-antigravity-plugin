@@ -3578,7 +3578,7 @@ var require_parse = __commonJS({
 var require_gray_matter = __commonJS({
   "node_modules/.pnpm/gray-matter@4.0.3/node_modules/gray-matter/index.js"(exports2, module2) {
     "use strict";
-    var fs7 = __require("fs");
+    var fs8 = __require("fs");
     var sections = require_section_matter();
     var defaults = require_defaults();
     var stringify = require_stringify();
@@ -3662,7 +3662,7 @@ var require_gray_matter = __commonJS({
       return stringify(file, data, options2);
     };
     matter3.read = function(filepath, options2) {
-      const str2 = fs7.readFileSync(filepath, "utf8");
+      const str2 = fs8.readFileSync(filepath, "utf8");
       const file = matter3(str2, options2);
       file.path = filepath;
       return file;
@@ -5039,7 +5039,42 @@ function parsePlanFile(raw) {
 
 // packages/plugin-core/dist/stop-handler.js
 import { execSync as execSync2 } from "node:child_process";
+import { promises as fs7 } from "node:fs";
+
+// packages/plugin-core/dist/heartbeat.js
+import crypto2 from "node:crypto";
 import { promises as fs6 } from "node:fs";
+import os7 from "node:os";
+import path8 from "node:path";
+var DEFAULT_THROTTLE_MS = 6e4;
+function statePath(cwd, host) {
+  const key = crypto2.createHash("sha256").update(cwd).digest("hex").slice(0, 16);
+  return path8.join(os7.tmpdir(), `memlin-${host}-heartbeat-${key}.json`);
+}
+async function recentlySent(file, throttleMs) {
+  try {
+    const raw = await fs6.readFile(file, "utf8");
+    const parsed = JSON.parse(raw);
+    return typeof parsed.sent_at === "number" && Date.now() - parsed.sent_at < throttleMs;
+  } catch {
+    return false;
+  }
+}
+async function recordInstallHeartbeat(cwd, reason, opts = {}) {
+  const host = opts.host ?? resolveHost().kind;
+  const throttleMs = opts.throttleMs ?? DEFAULT_THROTTLE_MS;
+  const file = statePath(cwd, host);
+  if (await recentlySent(file, throttleMs)) return;
+  try {
+    const ctx = await getApi({ cwd });
+    if (!ctx) return;
+    await ctx.api.getAccount();
+    await fs6.writeFile(file, JSON.stringify({ sent_at: Date.now(), reason, host }), "utf8");
+    log(`${host} activity recorded: ${reason}`);
+  } catch (err) {
+    log(`${host} activity failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
 
 // packages/plugin-core/dist/outcome-attribution.js
 function normalizeReference(value) {
@@ -5125,11 +5160,11 @@ function attributeAppliedItems(agentMessage, replay) {
   const titleIds = /* @__PURE__ */ new Map();
   const titleVersionIds = /* @__PURE__ */ new Map();
   for (const candidate of candidates) {
-    const path9 = candidate.path ? normalizeReference(candidate.path.replace(/^\.\//, "")) : "";
+    const path10 = candidate.path ? normalizeReference(candidate.path.replace(/^\.\//, "")) : "";
     const title = normalizeReference(candidate.title);
-    addReferenceKey(pathIds, path9, candidate.id);
-    if (path9) {
-      addReferenceKey(pathVersionIds, `${path9}\0${candidate.version_number}`, candidate.id);
+    addReferenceKey(pathIds, path10, candidate.id);
+    if (path10) {
+      addReferenceKey(pathVersionIds, `${path10}\0${candidate.version_number}`, candidate.id);
     }
     addReferenceKey(titleIds, title, candidate.id);
     if (title) {
@@ -5138,14 +5173,14 @@ function attributeAppliedItems(agentMessage, replay) {
   }
   const applied = [];
   for (const candidate of candidates) {
-    const path9 = candidate.path ? normalizeReference(candidate.path.replace(/^\.\//, "")) : "";
+    const path10 = candidate.path ? normalizeReference(candidate.path.replace(/^\.\//, "")) : "";
     const title = normalizeReference(candidate.title);
-    const pathPositions = unnegatedReferencePositions(message, path9);
-    const pathVersionKey = `${path9}\0${candidate.version_number}`;
-    const pathIsUnique = pathIds.get(path9)?.size === 1;
+    const pathPositions = unnegatedReferencePositions(message, path10);
+    const pathVersionKey = `${path10}\0${candidate.version_number}`;
+    const pathIsUnique = pathIds.get(path10)?.size === 1;
     const pathVersionIsUnique = pathVersionIds.get(pathVersionKey)?.size === 1;
     const pathMatch = pathPositions.length > 0 && (pathIsUnique || pathVersionIsUnique && pathPositions.some(
-      (position) => versionMentionNear(message, position, path9.length, candidate.version_number)
+      (position) => versionMentionNear(message, position, path10.length, candidate.version_number)
     ));
     const titlePositions = unnegatedReferencePositions(message, title);
     const titleVersionKey = `${title}\0${candidate.version_number}`;
@@ -5172,7 +5207,7 @@ function attributeAppliedItems(agentMessage, replay) {
 // packages/plugin-core/dist/project-resolver.js
 import { execSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
-import path8 from "node:path";
+import path9 from "node:path";
 var ALLOW_ACCOUNT_MISMATCH_ENV = "MEMLIN_ALLOW_ACCOUNT_MISMATCH";
 function allowAccountMismatch(env = process.env) {
   const v = env[ALLOW_ACCOUNT_MISMATCH_ENV];
@@ -5185,7 +5220,7 @@ function accountBindingHazard(r, opts = {}) {
   return "none";
 }
 async function resolveProject(api, cwd, configProjectId) {
-  const absCwd = path8.resolve(cwd);
+  const absCwd = path9.resolve(cwd);
   const remotes = detectGitRemotes(cwd);
   const hasGitRemote = remotes.length > 0;
   try {
@@ -5244,8 +5279,8 @@ function detectGitRemotes(cwd) {
         continue;
       }
       scanned++;
-      const child = path8.join(cwd, entry.name);
-      if (!existsSync(path8.join(child, ".git"))) continue;
+      const child = path9.join(cwd, entry.name);
+      if (!existsSync(path9.join(child, ".git"))) continue;
       const remote = readGitRemote(child);
       if (remote && !out.includes(remote)) out.push(remote);
     }
@@ -5770,8 +5805,8 @@ function getErrorMap() {
 
 // node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path9, errorMaps, issueData } = params;
-  const fullPath = [...path9, ...issueData.path || []];
+  const { data, path: path10, errorMaps, issueData } = params;
+  const fullPath = [...path10, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -5887,11 +5922,11 @@ var errorUtil;
 
 // node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path9, key) {
+  constructor(parent, value, path10, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path9;
+    this._path = path10;
     this._key = key;
   }
   get path() {
@@ -9924,7 +9959,7 @@ function flattenContent(c) {
 async function readLastExchange(transcriptPath) {
   let raw;
   try {
-    raw = await fs6.readFile(transcriptPath, "utf8");
+    raw = await fs7.readFile(transcriptPath, "utf8");
   } catch {
     return null;
   }
@@ -9970,13 +10005,8 @@ function isMemorable(exchange) {
   if (isNegativeFeedback(u)) return true;
   return false;
 }
-async function heartbeat(ctx) {
-  try {
-    await ctx.api.getAccount();
-    log("session stop recorded");
-  } catch (err) {
-    log(`stop heartbeat failed: ${err instanceof Error ? err.message : String(err)}`);
-  }
+async function heartbeat(cwd) {
+  await recordInstallHeartbeat(cwd, "stop");
 }
 function readGitRemote2(cwd) {
   try {
@@ -10168,7 +10198,7 @@ async function maybeScribeSession(ctx, payload) {
   if (!payload.transcript_path) return;
   let raw;
   try {
-    raw = await fs6.readFile(payload.transcript_path, "utf8");
+    raw = await fs7.readFile(payload.transcript_path, "utf8");
   } catch {
     return;
   }
@@ -10347,7 +10377,7 @@ async function maybeUpsertWorkingMemory(ctx, payload) {
     log("working memory: skipped \u2014 no resolve or exchange yet");
     return;
   }
-  const path9 = workingMemoryPath(sessionId);
+  const path10 = workingMemoryPath(sessionId);
   const callOpts = accountOverride ? { accountId: accountOverride } : {};
   let documentId = state.working_memory_ids?.[sessionId] ?? null;
   if (!documentId) {
@@ -10363,7 +10393,7 @@ async function maybeUpsertWorkingMemory(ctx, payload) {
         TIMEOUT_MS,
         []
       );
-      const hit = docs.find((d) => d.path === path9);
+      const hit = docs.find((d) => d.path === path10);
       if (hit) documentId = hit.id;
     } catch (err) {
       log(
@@ -10378,7 +10408,7 @@ async function maybeUpsertWorkingMemory(ctx, payload) {
         scope: resolvedProjectId ? "project" : "team",
         kind: "memory",
         title: `Working memory \u2014 ${sessionId.slice(0, 12)}`,
-        path: path9,
+        path: path10,
         content,
         commit_message: "session working memory",
         project_id: resolvedProjectId,
@@ -10404,16 +10434,17 @@ async function maybeUpsertWorkingMemory(ctx, payload) {
       next.working_memory_ids = Object.fromEntries(ids.slice(ids.length - 64));
     }
     await writeState(next);
-    log(`working memory: upserted ${path9} (v${result.version_number})`);
+    log(`working memory: upserted ${path10} (v${result.version_number})`);
   } catch (err) {
     log(`working memory failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 async function runStopHandler(payload) {
-  const ctx = await getApi();
+  const cwd = payload.cwd ?? process.cwd();
+  const ctx = await getApi({ cwd });
   if (!ctx) return;
   await Promise.allSettled([
-    heartbeat(ctx),
+    heartbeat(cwd),
     maybeProposeMemory(ctx, payload),
     maybeScribeSession(ctx, payload),
     maybeRecordOutcome(ctx, payload),
