@@ -59983,6 +59983,19 @@ var TOOLS = [
   }
 ];
 
+// packages/mcp-tools/src/context.ts
+async function resolveProjectFilter(ctx, requested) {
+  if (!requested) return ctx.projectId ?? null;
+  if (requested === ctx.projectId) return requested;
+  const { data, error: error2 } = await ctx.supabase.from("projects").select("id").eq("id", requested).eq("account_id", ctx.accountId).maybeSingle();
+  if (error2 || !data) {
+    throw new Error(
+      `project_id ${requested} does not belong to the connected account (${ctx.accountId}). Point this connection at that project's account first \u2014 e.g. \`memlin link --account <account>\` \u2014 rather than passing a project id from another workspace.`
+    );
+  }
+  return requested;
+}
+
 // packages/mcp-tools/src/curation.ts
 var CurationError = class extends Error {
   code;
@@ -61149,7 +61162,7 @@ var ReadArgs = external_exports.object({
 });
 async function readMemory(ctx, rawArgs) {
   const args = ReadArgs.parse(rawArgs ?? {});
-  const projectId = args.project_id ?? ctx.projectId ?? null;
+  const projectId = await resolveProjectFilter(ctx, args.project_id);
   let q2 = ctx.supabase.from("documents").select(
     `id, kind, scope, status, title, path, project_id, current_version_id,
        metadata, updated_at, created_at,
@@ -61257,7 +61270,7 @@ async function writeMemory(ctx, rawArgs) {
   return executeDocumentWrite(ctx, WriteArgs.parse(rawArgs));
 }
 async function executeDocumentWrite(ctx, args) {
-  const projectId = args.project_id ?? ctx.projectId ?? null;
+  const projectId = await resolveProjectFilter(ctx, args.project_id);
   if (args.document_id) {
     const { data: existing, error: ownErr } = await ctx.supabase.from("documents").select("account_id, kind").eq("id", args.document_id).maybeSingle();
     if (ownErr) throw new Error(`write_memory: ${ownErr.message}`);
@@ -61380,7 +61393,7 @@ async function search(ctx, rawArgs) {
   return overFetched.filter((h2) => matchesCustomFilter(customById.get(h2.id) ?? null, filter)).slice(0, requestedLimit);
 }
 async function searchRanked(ctx, args, limit2) {
-  const projectId = args.project_id ?? ctx.projectId ?? null;
+  const projectId = await resolveProjectFilter(ctx, args.project_id);
   const mode = args.mode ?? "semantic";
   if (mode === "hybrid" && ctx.embed) {
     try {
@@ -67440,7 +67453,7 @@ async function captureSession(ctx, rawArgs) {
   }
   const base = (ctx.apiBaseUrl || "https://memlin.ai/api/v1").replace(/\/+$/, "");
   const sessionId = args.session_id ?? `mcp-capture-${Date.now()}`;
-  const projectId = args.project_id ?? ctx.projectId ?? null;
+  const projectId = await resolveProjectFilter(ctx, args.project_id);
   const headers = {
     Authorization: `Bearer ${ctx.accessToken}`,
     "Content-Type": "application/json"
@@ -67505,7 +67518,7 @@ async function createDecision(ctx, rawArgs) {
   }
   const base = (ctx.apiBaseUrl || "https://memlin.ai/api/v1").replace(/\/+$/, "");
   const scope = args.scope ?? "team";
-  const projectId = args.project_id ?? ctx.projectId ?? null;
+  const projectId = await resolveProjectFilter(ctx, args.project_id);
   const custom3 = {};
   if (args.expected_outcome !== void 0) custom3.expected_outcome = args.expected_outcome;
   if (args.review_by) custom3.review_by = args.review_by;
@@ -67609,7 +67622,7 @@ async function createFeature(ctx, rawArgs) {
       "memlin_create_feature is unavailable on this connection (no access token to reach the features API)."
     );
   }
-  const projectId = args.project_id ?? ctx.projectId ?? null;
+  const projectId = await resolveProjectFilter(ctx, args.project_id);
   if (!projectId) {
     throw new Error(
       "a feature must belong to a project \u2014 pass project_id, or connect with a bound project."
