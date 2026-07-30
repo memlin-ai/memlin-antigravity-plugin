@@ -454,16 +454,18 @@ function normalizeGitRemote(raw) {
   if (!raw) return null;
   let s = raw.trim();
   if (!s) return null;
-  s = s.replace(/^git@([^:]+):/, "https://$1/");
-  s = s.replace(/^ssh:\/\//, "");
-  s = s.replace(/^https?:\/\//, "");
-  s = s.replace(/^git@/, "");
+  if (!s.includes("://")) {
+    s = s.replace(/^(?:[^@/\s]+@)?([^:/\s]+):(?!\/)/, "https://$1/");
+  }
+  s = s.replace(/^(?:ssh|git|https?):\/\//, "");
+  s = s.replace(/^[^/@]+@/, "");
   s = s.replace(/\.git$/, "");
   s = s.replace(/\/$/, "");
   const slash = s.indexOf("/");
   if (slash > 0) {
-    const host = s.slice(0, slash);
+    const host = s.slice(0, slash).toLowerCase();
     const rest = s.slice(slash);
+    s = host + rest;
     for (const provider of PROVIDER_HOSTS) {
       if (host === provider) break;
       if (host.startsWith(provider + "-")) {
@@ -473,6 +475,24 @@ function normalizeGitRemote(raw) {
     }
   }
   return s || null;
+}
+async function closeHttpSockets() {
+  try {
+    const dispatcher = globalThis[/* @__PURE__ */ Symbol.for("undici.globalDispatcher.1")];
+    if (dispatcher && typeof dispatcher.close === "function") {
+      let timer;
+      await Promise.race([
+        dispatcher.close(),
+        new Promise((resolve) => {
+          timer = setTimeout(resolve, 250);
+          timer.unref?.();
+        })
+      ]).finally(() => {
+        if (timer !== void 0) clearTimeout(timer);
+      });
+    }
+  } catch {
+  }
 }
 
 // packages/plugin-core/dist/host.js
@@ -550,7 +570,7 @@ function agentDevice() {
 var cachedAgentVersion = null;
 function agentVersion() {
   if (cachedAgentVersion) return cachedAgentVersion;
-  cachedAgentVersion = "0.1.27";
+  cachedAgentVersion = "0.1.28";
   return cachedAgentVersion;
 }
 function agentCapabilities() {
@@ -634,8 +654,11 @@ var MemlinApiClient = class {
     };
     if (body !== void 0) headers["Content-Type"] = "application/json";
     const idempotent = method === "GET";
-    const maxAttempts = idempotent ? (this.cfg.maxRetries ?? DEFAULT_MAX_RETRIES) + 1 : 1;
-    const timeoutMs = this.cfg.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+    const maxAttempts = idempotent ? Math.max(0, opts.maxRetries ?? this.cfg.maxRetries ?? DEFAULT_MAX_RETRIES) + 1 : 1;
+    const timeoutMs = Math.max(
+      1,
+      opts.requestTimeoutMs ?? this.cfg.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS
+    );
     for (let attempt = 1; ; attempt++) {
       let res;
       let text;
@@ -915,7 +938,11 @@ var MemlinApiClient = class {
    * the same account (no global-default/pinned-name mismatch).
    */
   async getAccount(opts = {}) {
-    return this.request("GET", "/account", void 0, { accountId: opts.accountId });
+    return this.request("GET", "/account", void 0, {
+      accountId: opts.accountId,
+      requestTimeoutMs: opts.requestTimeoutMs,
+      maxRetries: opts.maxRetries
+    });
   }
   /**
    * POST /projects/resolve — server-side project resolution.
@@ -927,6 +954,14 @@ var MemlinApiClient = class {
    */
   async resolveProject(input) {
     return this.request("POST", "/projects/resolve", input);
+  }
+  /** GET /account/enforce-done-deployed — the workspace done-deployed gate flag. */
+  async getEnforceDoneDeployed(opts = {}) {
+    return this.request("GET", "/account/enforce-done-deployed", void 0, opts);
+  }
+  /** PUT /account/enforce-done-deployed — owner/admin sets the workspace flag. */
+  async setEnforceDoneDeployed(enabled, opts = {}) {
+    return this.request("PUT", "/account/enforce-done-deployed", { enabled }, opts);
   }
   /**
    * POST /deploy-guard — acquire or release the per-project deploy lease.
@@ -996,9 +1031,9 @@ var MemlinApiClient = class {
    *
    * Called by the PostToolUse hook after the agent runs `git commit`.
    * The server reads the commit message + diff, asks Haiku to extract
-   * any decision/memory/skill baked into the change, and persists
-   * results as documents with metadata.status='proposed'. They appear
-   * in the user's inbox until accepted.
+   * any decision/memory/skill baked into the change, and persists the
+   * results. The server may activate or background captures automatically;
+   * only the post-processing `proposals_pending` subset needs inbox review.
    */
   async scribeDiff(input, opts = {}) {
     return this.request("POST", "/scribe/diff", input, { accountId: opts.accountId });
@@ -1006,7 +1041,8 @@ var MemlinApiClient = class {
   /**
    * POST /scribe/session — Phase 1 auto-capture from a Claude Code
    * session transcript. Server slices the transcript (tail-biased
-   * when too large), runs Haiku extraction, persists proposals.
+   * when too large), runs Haiku extraction, persists proposals, and reports
+   * how many still need review after automatic handling.
    *
    * Triggered manually by /memlin-scribe today; an auto-triggered
    * variant on Stop with a 15-min debounce is a fast follow-up.
@@ -1333,6 +1369,23 @@ function isFileNotFound(error) {
   return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
 }
 
+// packages/plugin-core/dist/hook-exit.js
+var HOOK_WATCHDOG_MS = 2e3;
+function releaseStdin() {
+  try {
+    const stdin = process.stdin;
+    stdin.pause();
+    stdin.unref?.();
+  } catch {
+  }
+}
+function exitHook(code) {
+  process.exitCode = code;
+  releaseStdin();
+  void closeHttpSockets();
+  setTimeout(() => process.exit(), HOOK_WATCHDOG_MS).unref();
+}
+
 // packages/plugin-core/dist/client.js
 function globalConfigFilePath() {
   return process.env.MEMLIN_CONFIG_FILE || path6.join(os5.homedir(), ".config", "memlin", "config.json");
@@ -1655,7 +1708,8 @@ async function resolveProject(api, cwd, configProjectId) {
         project_name: result.name,
         account_id: result.account_id,
         reason: result.reason === "none" ? "config" : result.reason,
-        hasGitRemote
+        hasGitRemote,
+        enforce_done_deployed: result.enforce_done_deployed
       };
     }
   } catch {
@@ -1714,11 +1768,13 @@ function isWorkspaceActive(input) {
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 var VERSION_URL = "https://raw.githubusercontent.com/memlin-ai/memlin-claude-plugin/main/.claude-plugin/marketplace.json";
 var FRESHNESS_TTL_MS = 6 * 60 * 60 * 1e3;
+function pluginVersionFromPath(filePath) {
+  const match = filePath.match(/[\\/]memlin-ai[\\/]memlin[\\/](\d+\.\d+\.\d+)[\\/]/);
+  return match ? match[1] : null;
+}
 function detectLocalPluginVersion() {
   try {
-    const filePath = fileURLToPath2(import.meta.url);
-    const match = filePath.match(/\/memlin-ai\/memlin\/(\d+\.\d+\.\d+)\//);
-    return match ? match[1] : null;
+    return pluginVersionFromPath(fileURLToPath2(import.meta.url));
   } catch {
     return null;
   }
@@ -1820,6 +1876,7 @@ import { promises as fs7 } from "node:fs";
 import os8 from "node:os";
 import path10 from "node:path";
 var DEFAULT_THROTTLE_MS = 6e4;
+var HEARTBEAT_REQUEST_TIMEOUT_MS = 750;
 function statePath(cwd, host) {
   const key = crypto2.createHash("sha256").update(cwd).digest("hex").slice(0, 16);
   return path10.join(os8.tmpdir(), `memlin-${host}-heartbeat-${key}.json`);
@@ -1841,7 +1898,10 @@ async function recordInstallHeartbeat(cwd, reason, opts = {}) {
   try {
     const ctx = await getApi({ cwd });
     if (!ctx) return;
-    await ctx.api.getAccount();
+    await ctx.api.getAccount({
+      requestTimeoutMs: HEARTBEAT_REQUEST_TIMEOUT_MS,
+      maxRetries: 0
+    });
     await fs7.writeFile(file, JSON.stringify({ sent_at: Date.now(), reason, host }), "utf8");
     log(`${host} activity recorded: ${reason}`);
   } catch (err) {
@@ -2266,4 +2326,4 @@ async function main() {
   }
   emitContext([CONTEXT_NOTE, banner, handoffContext, unboundNudge, inboxNudge]);
 }
-main().catch(() => process.exit(0));
+main().catch(() => exitHook(0));
