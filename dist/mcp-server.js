@@ -3237,8 +3237,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path13) {
-      let input = path13;
+    function removeDotSegments(path14) {
+      let input = path14;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3490,8 +3490,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path13, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path13 && path13 !== "/" ? path13 : void 0;
+        const [path14, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path14 && path14 !== "/" ? path14 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -7326,13 +7326,13 @@ function __disposeResources(env) {
   }
   return next();
 }
-function __rewriteRelativeImportExtension(path13, preserveJsx) {
-  if (typeof path13 === "string" && /^\.\.?\//.test(path13)) {
-    return path13.replace(/\.(tsx)$|((?:\.d)?)((?:\.[^./]+?)?)\.([cm]?)ts$/i, function(m2, tsx, d2, ext, cm) {
+function __rewriteRelativeImportExtension(path14, preserveJsx) {
+  if (typeof path14 === "string" && /^\.\.?\//.test(path14)) {
+    return path14.replace(/\.(tsx)$|((?:\.d)?)((?:\.[^./]+?)?)\.([cm]?)ts$/i, function(m2, tsx, d2, ext, cm) {
       return tsx ? preserveJsx ? ".jsx" : ".js" : d2 && (!ext || !cm) ? m2 : d2 + ext + "." + cm.toLowerCase() + "js";
     });
   }
-  return path13;
+  return path14;
 }
 var extendStatics, __assign, __createBinding, __setModuleDefault, ownKeys, _SuppressedError, tslib_es6_default;
 var init_tslib_es6 = __esm({
@@ -20630,14 +20630,14 @@ var require_url_state_machine = __commonJS({
       return url.replace(/\u0009|\u000A|\u000D/g, "");
     }
     function shortenPath(url) {
-      const path13 = url.path;
-      if (path13.length === 0) {
+      const path14 = url.path;
+      if (path14.length === 0) {
         return;
       }
-      if (url.scheme === "file" && path13.length === 1 && isNormalizedWindowsDriveLetter(path13[0])) {
+      if (url.scheme === "file" && path14.length === 1 && isNormalizedWindowsDriveLetter(path14[0])) {
         return;
       }
-      path13.pop();
+      path14.pop();
     }
     function includesCredentials(url) {
       return url.username !== "" || url.password !== "";
@@ -26218,14 +26218,14 @@ __export(fileFromPath_exports, {
 });
 import { statSync, createReadStream, promises as fs } from "fs";
 import { basename } from "path";
-function createFileFromPath(path13, { mtimeMs, size }, filenameOrOptions, options2 = {}) {
+function createFileFromPath(path14, { mtimeMs, size }, filenameOrOptions, options2 = {}) {
   let filename;
   if (isPlainObject_default2(filenameOrOptions)) {
     [options2, filename] = [filenameOrOptions, void 0];
   } else {
     filename = filenameOrOptions;
   }
-  const file = new FileFromPath({ path: path13, size, lastModified: mtimeMs });
+  const file = new FileFromPath({ path: path14, size, lastModified: mtimeMs });
   if (!filename) {
     filename = file.name;
   }
@@ -26234,13 +26234,13 @@ function createFileFromPath(path13, { mtimeMs, size }, filenameOrOptions, option
     lastModified: file.lastModified
   });
 }
-function fileFromPathSync(path13, filenameOrOptions, options2 = {}) {
-  const stats = statSync(path13);
-  return createFileFromPath(path13, stats, filenameOrOptions, options2);
+function fileFromPathSync(path14, filenameOrOptions, options2 = {}) {
+  const stats = statSync(path14);
+  return createFileFromPath(path14, stats, filenameOrOptions, options2);
 }
-async function fileFromPath2(path13, filenameOrOptions, options2) {
-  const stats = await fs.stat(path13);
-  return createFileFromPath(path13, stats, filenameOrOptions, options2);
+async function fileFromPath2(path14, filenameOrOptions, options2) {
+  const stats = await fs.stat(path14);
+  return createFileFromPath(path14, stats, filenameOrOptions, options2);
 }
 var import_node_domexception, __classPrivateFieldSet5, __classPrivateFieldGet6, _FileFromPath_path, _FileFromPath_start, MESSAGE, FileFromPath;
 var init_fileFromPath = __esm({
@@ -31412,7 +31412,7 @@ var init_companion_client = __esm({
 // apps/mcp-server/src/index.ts
 import { execSync as execSync4 } from "node:child_process";
 import { readFileSync as readFileSync2 } from "node:fs";
-import path12, { dirname as dirname2, join as join2 } from "node:path";
+import path13, { dirname as dirname2, join as join2 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 import os8 from "node:os";
 
@@ -31894,8 +31894,8 @@ function getErrorMap() {
 
 // node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path13, errorMaps, issueData } = params;
-  const fullPath = [...path13, ...issueData.path || []];
+  const { data, path: path14, errorMaps, issueData } = params;
+  const fullPath = [...path14, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -32011,11 +32011,11 @@ var errorUtil;
 
 // node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path13, key) {
+  constructor(parent, value, path14, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path13;
+    this._path = path14;
     this._key = key;
   }
   get path() {
@@ -35652,10 +35652,10 @@ function assignProp(target, prop, value) {
     configurable: true
   });
 }
-function getElementAtPath(obj, path13) {
-  if (!path13)
+function getElementAtPath(obj, path14) {
+  if (!path14)
     return obj;
-  return path13.reduce((acc, key) => acc?.[key], obj);
+  return path14.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -35975,11 +35975,11 @@ function aborted(x2, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path13, issues) {
+function prefixIssues(path14, issues) {
   return issues.map((iss) => {
     var _a2;
     (_a2 = iss).path ?? (_a2.path = []);
-    iss.path.unshift(path13);
+    iss.path.unshift(path14);
     return iss;
   });
 }
@@ -47521,8 +47521,8 @@ var IcebergError = class extends Error {
     return this.status === 419;
   }
 };
-function buildUrl(baseUrl, path13, query) {
-  const url = new URL(path13, baseUrl);
+function buildUrl(baseUrl, path14, query) {
+  const url = new URL(path14, baseUrl);
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       if (value !== void 0) {
@@ -47552,12 +47552,12 @@ function createFetchClient(options2) {
   return {
     async request({
       method,
-      path: path13,
+      path: path14,
       query,
       body,
       headers
     }) {
-      const url = buildUrl(options2.baseUrl, path13, query);
+      const url = buildUrl(options2.baseUrl, path14, query);
       const authHeaders2 = await buildAuthHeaders(options2.auth);
       const res = await fetchFn(url, {
         method,
@@ -48405,7 +48405,7 @@ var StorageFileApi = class extends BaseApiClient {
   * @param path The relative file path. Should be of the format `folder/subfolder/filename.png`. The bucket must already exist before attempting to upload.
   * @param fileBody The body of the file to be stored in the bucket.
   */
-  async uploadOrUpdate(method, path13, fileBody, fileOptions) {
+  async uploadOrUpdate(method, path14, fileBody, fileOptions) {
     var _this = this;
     return _this.handleOperation(async () => {
       let body;
@@ -48429,7 +48429,7 @@ var StorageFileApi = class extends BaseApiClient {
         if ((typeof ReadableStream !== "undefined" && body instanceof ReadableStream || body && typeof body === "object" && "pipe" in body && typeof body.pipe === "function") && !options2.duplex) options2.duplex = "half";
       }
       if (fileOptions === null || fileOptions === void 0 ? void 0 : fileOptions.headers) for (const [key, value] of Object.entries(fileOptions.headers)) headers = setHeader(headers, key, value);
-      const cleanPath = _this._removeEmptyFolders(path13);
+      const cleanPath = _this._removeEmptyFolders(path14);
       const _path = _this._getFinalPath(cleanPath);
       const data = await (method == "PUT" ? put : post)(_this.fetch, `${_this.url}/object/${_path}`, body, _objectSpread22({ headers }, (options2 === null || options2 === void 0 ? void 0 : options2.duplex) ? { duplex: options2.duplex } : {}));
       return {
@@ -48491,8 +48491,8 @@ var StorageFileApi = class extends BaseApiClient {
   * - Refer to the [Storage guide](/docs/guides/storage/security/access-control) on how access control works
   * - For React Native, using either `Blob`, `File` or `FormData` does not work as intended. Upload file using `ArrayBuffer` from base64 file data instead, see example below.
   */
-  async upload(path13, fileBody, fileOptions) {
-    return this.uploadOrUpdate("POST", path13, fileBody, fileOptions);
+  async upload(path14, fileBody, fileOptions) {
+    return this.uploadOrUpdate("POST", path14, fileBody, fileOptions);
   }
   /**
   * Upload a file with a token generated from `createSignedUploadUrl`.
@@ -48532,9 +48532,9 @@ var StorageFileApi = class extends BaseApiClient {
   *   - `objects` table permissions: none
   * - Refer to the [Storage guide](/docs/guides/storage/security/access-control) on how access control works
   */
-  async uploadToSignedUrl(path13, token, fileBody, fileOptions) {
+  async uploadToSignedUrl(path14, token, fileBody, fileOptions) {
     var _this3 = this;
-    const cleanPath = _this3._removeEmptyFolders(path13);
+    const cleanPath = _this3._removeEmptyFolders(path14);
     const _path = _this3._getFinalPath(cleanPath);
     const url = new URL(_this3.url + `/object/upload/sign/${_path}`);
     url.searchParams.set("token", token);
@@ -48603,10 +48603,10 @@ var StorageFileApi = class extends BaseApiClient {
   *   - `objects` table permissions: `insert`
   * - Refer to the [Storage guide](/docs/guides/storage/security/access-control) on how access control works
   */
-  async createSignedUploadUrl(path13, options2) {
+  async createSignedUploadUrl(path14, options2) {
     var _this4 = this;
     return _this4.handleOperation(async () => {
-      let _path = _this4._getFinalPath(path13);
+      let _path = _this4._getFinalPath(path14);
       const headers = _objectSpread22({}, _this4.headers);
       if (options2 === null || options2 === void 0 ? void 0 : options2.upsert) headers["x-upsert"] = "true";
       const data = await post(_this4.fetch, `${_this4.url}/object/upload/sign/${_path}`, {}, { headers });
@@ -48615,7 +48615,7 @@ var StorageFileApi = class extends BaseApiClient {
       if (!token) throw new StorageError("No token returned by API");
       return {
         signedUrl: url.toString(),
-        path: path13,
+        path: path14,
         token
       };
     });
@@ -48675,8 +48675,8 @@ var StorageFileApi = class extends BaseApiClient {
   * - Refer to the [Storage guide](/docs/guides/storage/security/access-control) on how access control works
   * - For React Native, using either `Blob`, `File` or `FormData` does not work as intended. Update file using `ArrayBuffer` from base64 file data instead, see example below.
   */
-  async update(path13, fileBody, fileOptions) {
-    return this.uploadOrUpdate("PUT", path13, fileBody, fileOptions);
+  async update(path14, fileBody, fileOptions) {
+    return this.uploadOrUpdate("PUT", path14, fileBody, fileOptions);
   }
   /**
   * Moves an existing file to a new path in the same bucket.
@@ -48827,10 +48827,10 @@ var StorageFileApi = class extends BaseApiClient {
   *   - `objects` table permissions: `select`
   * - Refer to the [Storage guide](/docs/guides/storage/security/access-control) on how access control works
   */
-  async createSignedUrl(path13, expiresIn, options2) {
+  async createSignedUrl(path14, expiresIn, options2) {
     var _this8 = this;
     return _this8.handleOperation(async () => {
-      let _path = _this8._getFinalPath(path13);
+      let _path = _this8._getFinalPath(path14);
       const hasTransform = typeof (options2 === null || options2 === void 0 ? void 0 : options2.transform) === "object" && options2.transform !== null && Object.keys(options2.transform).length > 0;
       let data = await post(_this8.fetch, `${_this8.url}/object/sign/${_path}`, _objectSpread22({ expiresIn }, hasTransform ? { transform: options2.transform } : {}), { headers: _this8.headers });
       const query = new URLSearchParams();
@@ -48966,13 +48966,13 @@ var StorageFileApi = class extends BaseApiClient {
   *   - `objects` table permissions: `select`
   * - Refer to the [Storage guide](/docs/guides/storage/security/access-control) on how access control works
   */
-  download(path13, options2, parameters) {
+  download(path14, options2, parameters) {
     const renderPath = typeof (options2 === null || options2 === void 0 ? void 0 : options2.transform) === "object" && options2.transform !== null && Object.keys(options2.transform).length > 0 ? "render/image/authenticated" : "object";
     const query = new URLSearchParams();
     if (options2 === null || options2 === void 0 ? void 0 : options2.transform) this.applyTransformOptsToQuery(query, options2.transform);
     if ((options2 === null || options2 === void 0 ? void 0 : options2.cacheNonce) != null) query.set("cacheNonce", String(options2.cacheNonce));
     const queryString = query.toString();
-    const _path = this._getFinalPath(path13);
+    const _path = this._getFinalPath(path14);
     const downloadFn = () => get(this.fetch, `${this.url}/${renderPath}/${_path}${queryString ? `?${queryString}` : ""}`, {
       headers: this.headers,
       noResolveJson: true
@@ -49003,9 +49003,9 @@ var StorageFileApi = class extends BaseApiClient {
   * }
   * ```
   */
-  async info(path13) {
+  async info(path14) {
     var _this10 = this;
-    const _path = _this10._getFinalPath(path13);
+    const _path = _this10._getFinalPath(path14);
     return _this10.handleOperation(async () => {
       return recursiveToCamel(await get(_this10.fetch, `${_this10.url}/object/info/${_path}`, { headers: _this10.headers }));
     });
@@ -49026,9 +49026,9 @@ var StorageFileApi = class extends BaseApiClient {
   *   .exists('folder/avatar1.png')
   * ```
   */
-  async exists(path13) {
+  async exists(path14) {
     var _this11 = this;
-    const _path = _this11._getFinalPath(path13);
+    const _path = _this11._getFinalPath(path14);
     try {
       await head(_this11.fetch, `${_this11.url}/object/${_path}`, { headers: _this11.headers });
       return {
@@ -49107,8 +49107,8 @@ var StorageFileApi = class extends BaseApiClient {
   *   - `objects` table permissions: none
   * - Refer to the [Storage guide](/docs/guides/storage/security/access-control) on how access control works
   */
-  getPublicUrl(path13, options2) {
-    const _path = this._getFinalPath(path13);
+  getPublicUrl(path14, options2) {
+    const _path = this._getFinalPath(path14);
     const query = new URLSearchParams();
     if (options2 === null || options2 === void 0 ? void 0 : options2.download) query.set("download", options2.download === true ? "" : options2.download);
     if (options2 === null || options2 === void 0 ? void 0 : options2.transform) this.applyTransformOptsToQuery(query, options2.transform);
@@ -49247,10 +49247,10 @@ var StorageFileApi = class extends BaseApiClient {
   *   - `objects` table permissions: `select`
   * - Refer to the [Storage guide](/docs/guides/storage/security/access-control) on how access control works
   */
-  async list(path13, options2, parameters) {
+  async list(path14, options2, parameters) {
     var _this13 = this;
     return _this13.handleOperation(async () => {
-      const body = _objectSpread22(_objectSpread22(_objectSpread22({}, DEFAULT_SEARCH_OPTIONS), options2), {}, { prefix: path13 || "" });
+      const body = _objectSpread22(_objectSpread22(_objectSpread22({}, DEFAULT_SEARCH_OPTIONS), options2), {}, { prefix: path14 || "" });
       return await post(_this13.fetch, `${_this13.url}/object/list/${_this13.bucketId}`, body, { headers: _this13.headers }, parameters);
     });
   }
@@ -49315,11 +49315,11 @@ var StorageFileApi = class extends BaseApiClient {
     if (typeof Buffer !== "undefined") return Buffer.from(data).toString("base64");
     return btoa(data);
   }
-  _getFinalPath(path13) {
-    return `${this.bucketId}/${path13.replace(/^\/+/, "")}`;
+  _getFinalPath(path14) {
+    return `${this.bucketId}/${path14.replace(/^\/+/, "")}`;
   }
-  _removeEmptyFolders(path13) {
-    return path13.replace(/^\/|\/$/g, "").replace(/\/+/g, "/");
+  _removeEmptyFolders(path14) {
+    return path14.replace(/^\/|\/$/g, "").replace(/\/+/g, "/");
   }
   /** Modifies the `query`, appending values the from `transform` */
   applyTransformOptsToQuery(query, transform2) {
@@ -51975,13 +51975,13 @@ var MultipartBody = class {
 // node_modules/.pnpm/openai@4.104.0_ws@8.20.1_zod@3.25.76/node_modules/openai/_shims/node-runtime.mjs
 import { ReadableStream as ReadableStream4 } from "node:stream/web";
 var fileFromPathWarned = false;
-async function fileFromPath3(path13, ...args) {
+async function fileFromPath3(path14, ...args) {
   const { fileFromPath: _fileFromPath } = await Promise.resolve().then(() => (init_fileFromPath(), fileFromPath_exports));
   if (!fileFromPathWarned) {
-    console.warn(`fileFromPath is deprecated; use fs.createReadStream(${JSON.stringify(path13)}) instead`);
+    console.warn(`fileFromPath is deprecated; use fs.createReadStream(${JSON.stringify(path14)}) instead`);
     fileFromPathWarned = true;
   }
-  return await _fileFromPath(path13, ...args);
+  return await _fileFromPath(path14, ...args);
 }
 var defaultHttpAgent = new import_agentkeepalive.default({ keepAlive: true, timeout: 5 * 60 * 1e3 });
 var defaultHttpsAgent = new import_agentkeepalive.default.HttpsAgent({ keepAlive: true, timeout: 5 * 60 * 1e3 });
@@ -52765,29 +52765,29 @@ var APIClient = class {
   defaultIdempotencyKey() {
     return `stainless-node-retry-${uuid4()}`;
   }
-  get(path13, opts) {
-    return this.methodRequest("get", path13, opts);
+  get(path14, opts) {
+    return this.methodRequest("get", path14, opts);
   }
-  post(path13, opts) {
-    return this.methodRequest("post", path13, opts);
+  post(path14, opts) {
+    return this.methodRequest("post", path14, opts);
   }
-  patch(path13, opts) {
-    return this.methodRequest("patch", path13, opts);
+  patch(path14, opts) {
+    return this.methodRequest("patch", path14, opts);
   }
-  put(path13, opts) {
-    return this.methodRequest("put", path13, opts);
+  put(path14, opts) {
+    return this.methodRequest("put", path14, opts);
   }
-  delete(path13, opts) {
-    return this.methodRequest("delete", path13, opts);
+  delete(path14, opts) {
+    return this.methodRequest("delete", path14, opts);
   }
-  methodRequest(method, path13, opts) {
+  methodRequest(method, path14, opts) {
     return this.request(Promise.resolve(opts).then(async (opts2) => {
       const body = opts2 && isBlobLike(opts2?.body) ? new DataView(await opts2.body.arrayBuffer()) : opts2?.body instanceof DataView ? opts2.body : opts2?.body instanceof ArrayBuffer ? new DataView(opts2.body) : opts2 && ArrayBuffer.isView(opts2?.body) ? new DataView(opts2.body.buffer) : opts2?.body;
-      return { method, path: path13, ...opts2, body };
+      return { method, path: path14, ...opts2, body };
     }));
   }
-  getAPIList(path13, Page2, opts) {
-    return this.requestAPIList(Page2, { method: "get", path: path13, ...opts });
+  getAPIList(path14, Page2, opts) {
+    return this.requestAPIList(Page2, { method: "get", path: path14, ...opts });
   }
   calculateContentLength(body) {
     if (typeof body === "string") {
@@ -52806,10 +52806,10 @@ var APIClient = class {
   }
   buildRequest(inputOptions, { retryCount = 0 } = {}) {
     const options2 = { ...inputOptions };
-    const { method, path: path13, query, headers = {} } = options2;
+    const { method, path: path14, query, headers = {} } = options2;
     const body = ArrayBuffer.isView(options2.body) || options2.__binaryRequest && typeof options2.body === "string" ? options2.body : isMultipartBody(options2.body) ? options2.body.body : options2.body ? JSON.stringify(options2.body, null, 2) : null;
     const contentLength = this.calculateContentLength(body);
-    const url = this.buildURL(path13, query);
+    const url = this.buildURL(path14, query);
     if ("timeout" in options2)
       validatePositiveInteger("timeout", options2.timeout);
     options2.timeout = options2.timeout ?? this.timeout;
@@ -52925,8 +52925,8 @@ var APIClient = class {
     const request = this.makeRequest(options2, null);
     return new PagePromise(this, request, Page2);
   }
-  buildURL(path13, query) {
-    const url = isAbsoluteURL(path13) ? new URL(path13) : new URL(this.baseURL + (this.baseURL.endsWith("/") && path13.startsWith("/") ? path13.slice(1) : path13));
+  buildURL(path14, query) {
+    const url = isAbsoluteURL(path14) ? new URL(path14) : new URL(this.baseURL + (this.baseURL.endsWith("/") && path14.startsWith("/") ? path14.slice(1) : path14));
     const defaultQuery = this.defaultQuery();
     if (!isEmptyObj(defaultQuery)) {
       query = { ...defaultQuery, ...query };
@@ -58804,8 +58804,8 @@ function validateActionInput(input, schema) {
   return { valid: errors.length === 0, errors };
 }
 function renderPromptTemplate(template, input) {
-  return template.replace(/\{\{\s*input\.([a-zA-Z0-9_.]+)\s*\}\}/g, (_match, path13) => {
-    const parts = String(path13).split(".");
+  return template.replace(/\{\{\s*input\.([a-zA-Z0-9_.]+)\s*\}\}/g, (_match, path14) => {
+    const parts = String(path14).split(".");
     let cur = input;
     for (const p2 of parts) {
       if (cur && typeof cur === "object" && p2 in cur) {
@@ -59250,7 +59250,36 @@ function fitnessFromCounts(pos, neg) {
   const clamped = Math.max(-0.5, Math.min(0.3, val));
   return 1 + clamped;
 }
-function accumulateOutcomeCounts(meta, itemIds, resolveCategory, posCounts, negCounts) {
+function weightedOutcomeItemCredits(input) {
+  const { deliveredIds, skillIds, meta } = input;
+  const hasExplicitAttribution = meta != null && Object.prototype.hasOwnProperty.call(meta, "applied_item_ids");
+  if (!hasExplicitAttribution) {
+    return deliveredIds.map((id) => ({ id, weight: 1, evidence: "legacy_delivered" }));
+  }
+  const delivered = new Set(deliveredIds);
+  const applied = new Set(
+    Array.isArray(meta.applied_item_ids) ? meta.applied_item_ids.filter(
+      (id) => typeof id === "string" && delivered.has(id)
+    ) : []
+  );
+  const referenced = new Set(
+    Array.isArray(meta?.referenced_item_ids) ? meta.referenced_item_ids.filter(
+      (id) => typeof id === "string" && delivered.has(id)
+    ) : []
+  );
+  const inferredNonSkills = deliveredIds.filter(
+    (id) => !skillIds.has(id) && !referenced.has(id)
+  );
+  const fallbackWeight = inferredNonSkills.length > 0 ? 1 / inferredNonSkills.length : 0;
+  return deliveredIds.flatMap((id) => {
+    if (skillIds.has(id)) {
+      return applied.has(id) ? [{ id, weight: 1, evidence: "applied" }] : [];
+    }
+    if (referenced.has(id)) return [{ id, weight: 1, evidence: "referenced" }];
+    return fallbackWeight > 0 ? [{ id, weight: fallbackWeight, evidence: "delivered_fallback" }] : [];
+  });
+}
+function accumulateWeightedOutcomeCounts(meta, credits, resolveCategory, posCounts, negCounts) {
   if (!meta) return false;
   const val = meta.outcome;
   if (val !== "positive" && val !== "negative") return false;
@@ -59260,16 +59289,18 @@ function accumulateOutcomeCounts(meta, itemIds, resolveCategory, posCounts, negC
   )) {
     return false;
   }
-  const weight = outcomeWeight({
+  const rowWeight = outcomeWeight({
     outcome: val,
     severity: typeof meta.severity === "string" ? meta.severity : null,
     agent_apology: meta.agent_apology === true
   });
-  for (const itemId of itemIds) {
+  for (const credit of credits) {
+    if (!Number.isFinite(credit.weight) || credit.weight <= 0) continue;
+    const weight = rowWeight * credit.weight;
     if (val === "positive") {
-      posCounts.set(itemId, (posCounts.get(itemId) ?? 0) + weight);
+      posCounts.set(credit.id, (posCounts.get(credit.id) ?? 0) + weight);
     } else {
-      negCounts.set(itemId, (negCounts.get(itemId) ?? 0) + weight);
+      negCounts.set(credit.id, (negCounts.get(credit.id) ?? 0) + weight);
     }
   }
   return true;
@@ -59279,9 +59310,6 @@ function accumulateOutcomeCounts(meta, itemIds, resolveCategory, posCounts, negC
 var import_gray_matter2 = __toESM(require_gray_matter(), 1);
 
 // packages/shared/dist/model-prices.js
-var CACHE_READ_MULTIPLIER = 0.1;
-var CACHE_WRITE_5M_MULTIPLIER = 1.25;
-var CACHE_WRITE_1H_MULTIPLIER = 2;
 var MODEL_PRICES = {
   // Anthropic. Opus was absent until 2026-07-23, which meant every Opus turn —
   // a common Claude Code default — priced as $0 and was reported as an unpriced
@@ -59309,22 +59337,6 @@ var MODEL_PRICES = {
   "text-embedding-3-small": { inputUsdPerMTok: 0.02, outputUsdPerMTok: 0 },
   "gpt-4.1-mini": { inputUsdPerMTok: 0.4, outputUsdPerMTok: 1.6 }
 };
-function normalizeModelId(model) {
-  return model.trim().replace(/-20\d{6}$/, "");
-}
-function costUsdFor(model, inputTokens, outputTokens, cache) {
-  const price = MODEL_PRICES[normalizeModelId(model)];
-  if (!price) return null;
-  const n2 = (v2) => Number(v2) || 0;
-  const inTok = n2(inputTokens);
-  const outTok = n2(outputTokens);
-  const cacheRead = n2(cache?.cacheReadInputTokens);
-  const write5m = n2(cache?.cacheCreation5mInputTokens);
-  const write1h = n2(cache?.cacheCreation1hInputTokens);
-  const usd = inTok / 1e6 * price.inputUsdPerMTok + outTok / 1e6 * price.outputUsdPerMTok + // Cache tokens are priced off the BASE INPUT rate, not the output rate.
-  cacheRead / 1e6 * price.inputUsdPerMTok * CACHE_READ_MULTIPLIER + write5m / 1e6 * price.inputUsdPerMTok * CACHE_WRITE_5M_MULTIPLIER + write1h / 1e6 * price.inputUsdPerMTok * CACHE_WRITE_1H_MULTIPLIER;
-  return Math.round(usd * 1e6) / 1e6;
-}
 
 // packages/shared/dist/usage-stats.js
 var SONNET_INPUT_USD_PER_MTOK = MODEL_PRICES["claude-sonnet-4-6"].inputUsdPerMTok;
@@ -59659,8 +59671,8 @@ var TOOLS = [
           description: 'Specific, concrete task description. "review this code for security" not "help with auth".'
         },
         project_id: {
-          type: "string",
-          description: "Optional project to scope the bundle. Defaults to the agent's bound project (if any) or account-scope only."
+          anyOf: [{ type: "string" }, { type: "null" }],
+          description: "Optional project to scope the bundle. Omit it to use the workspace binding. Pass null only to deliberately request account-scope context."
         },
         max_tokens: {
           type: "number",
@@ -60945,11 +60957,25 @@ var ActionExecuteError = class extends Error {
     this.name = "ActionExecuteError";
   }
 };
+var ACTION_MODEL_SELECT = [
+  "id",
+  "provider",
+  "provider_model_id",
+  "aliases",
+  "is_active",
+  "lifecycle_status",
+  "health_status",
+  "model_kind",
+  "price_input_1k",
+  "price_output_1k",
+  "pricing_source",
+  "pricing_checked_at"
+].join(", ");
 async function executeAction(args) {
   const { client: client2, accountId, actionId, input, userId } = args;
   const dispatchOpts = {
     providerKeys: args.providerKeys,
-    allowPlatformProviderKey: args.allowPlatformProviderKey !== false
+    allowPlatformProviderKey: args.allowPlatformProviderKey === true
   };
   const { data: row, error: rowErr } = await client2.from("documents").select("id, account_id, kind, metadata, title").eq("id", actionId).maybeSingle();
   if (rowErr) {
@@ -60983,16 +61009,37 @@ async function executeAction(args) {
       inputValidation.errors
     );
   }
+  let executionMetadata = parsed.ok;
+  let resolvedModel = null;
+  if (parsed.ok.implementation.type === "provider_call") {
+    const saved = parsed.ok.implementation;
+    resolvedModel = await resolveSavedActionModel({
+      client: args.catalogClient ?? client2,
+      accountId,
+      provider: saved.provider,
+      savedModelId: saved.model,
+      platformFunded: !hasByokProviderKey(saved.provider, dispatchOpts.providerKeys)
+    });
+    executionMetadata = {
+      ...parsed.ok,
+      implementation: { ...saved, model: resolvedModel.providerModelId }
+    };
+  }
   const start = Date.now();
   let dispatched;
   try {
-    dispatched = await dispatch(parsed.ok, input, dispatchOpts);
+    dispatched = await dispatch(executionMetadata, input, dispatchOpts);
   } catch (e2) {
     if (e2 instanceof ActionExecuteError) throw e2;
     throw new ActionExecuteError(e2 instanceof Error ? e2.message : String(e2), "provider_error");
   }
   const latency_ms = Date.now() - start;
-  const cost_usd = dispatched.input_tokens !== void 0 && dispatched.output_tokens !== void 0 ? costUsdFor(modelOf(parsed.ok.implementation) ?? "", dispatched.input_tokens, dispatched.output_tokens) : null;
+  const cost_usd = resolvedModel && dispatched.input_tokens !== void 0 && dispatched.output_tokens !== void 0 ? catalogCostUsd(
+    resolvedModel.priceInput1k,
+    resolvedModel.priceOutput1k,
+    dispatched.input_tokens,
+    dispatched.output_tokens
+  ) : null;
   let audit_id = "";
   try {
     const { data: auditData, error: auditErr } = await client2.rpc("record_usage_event", {
@@ -61005,7 +61052,13 @@ async function executeAction(args) {
         action_name: parsed.ok.name,
         implementation_type: parsed.ok.implementation.type,
         provider: providerOf(parsed.ok.implementation),
-        model: modelOf(parsed.ok.implementation),
+        // Registry IDs are stable and globally unique; provider-native IDs
+        // are separate so billing never joins against an ambiguous alias.
+        model: resolvedModel?.registryId ?? null,
+        provider_model_id: resolvedModel?.providerModelId ?? null,
+        saved_model_id: modelOf(parsed.ok.implementation),
+        pricing_source: resolvedModel?.pricingSource ?? null,
+        platform_funded: resolvedModel?.platformFunded ?? false,
         latency_ms,
         input_keys: Object.keys(input),
         input_tokens: dispatched.input_tokens ?? null,
@@ -61026,7 +61079,8 @@ async function executeAction(args) {
     meta: {
       implementation_type: parsed.ok.implementation.type,
       provider: providerOf(parsed.ok.implementation),
-      model: modelOf(parsed.ok.implementation),
+      model: resolvedModel?.providerModelId ?? modelOf(parsed.ok.implementation),
+      ...resolvedModel ? { model_registry_id: resolvedModel.registryId } : {},
       latency_ms,
       ...dispatched.input_tokens !== void 0 ? { input_tokens: dispatched.input_tokens } : {},
       ...dispatched.output_tokens !== void 0 ? { output_tokens: dispatched.output_tokens } : {},
@@ -61034,6 +61088,92 @@ async function executeAction(args) {
     },
     audit_id
   };
+}
+function hasByokProviderKey(provider, keys) {
+  const key = provider === "anthropic" ? keys?.anthropic : provider === "google" ? keys?.gemini : keys?.grok;
+  return typeof key === "string" && key.trim().length > 0;
+}
+function nonnegativeNumber(value) {
+  if (value == null) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+function verifiedCatalogPrice(model) {
+  const input = nonnegativeNumber(model.price_input_1k);
+  const output = nonnegativeNumber(model.price_output_1k);
+  const source = model.pricing_source?.trim() ?? "";
+  const checkedAt = model.pricing_checked_at ? Date.parse(model.pricing_checked_at) : Number.NaN;
+  if (input == null || output == null || !source || !Number.isFinite(checkedAt)) return null;
+  return { input, output, source };
+}
+async function loadSavedCatalogModel(args) {
+  const byProviderId = await args.client.from("frontier_models").select(ACTION_MODEL_SELECT).eq("provider", args.provider).eq("provider_model_id", args.savedModelId).maybeSingle();
+  if (byProviderId.error) {
+    throw new ActionExecuteError("central model catalog is unavailable", "model_unavailable");
+  }
+  if (byProviderId.data) return byProviderId.data;
+  const byRegistryId = await args.client.from("frontier_models").select(ACTION_MODEL_SELECT).eq("provider", args.provider).eq("id", args.savedModelId).maybeSingle();
+  if (byRegistryId.error) {
+    throw new ActionExecuteError("central model catalog is unavailable", "model_unavailable");
+  }
+  if (byRegistryId.data) return byRegistryId.data;
+  const byAlias = await args.client.from("frontier_models").select(ACTION_MODEL_SELECT).eq("provider", args.provider).contains("aliases", [args.savedModelId]).maybeSingle();
+  if (byAlias.error) {
+    throw new ActionExecuteError(
+      "central model alias is unavailable or ambiguous",
+      "model_unavailable"
+    );
+  }
+  return byAlias.data ?? null;
+}
+async function resolveSavedActionModel(args) {
+  const [model, accountResult] = await Promise.all([
+    loadSavedCatalogModel(args),
+    args.client.from("accounts").select("allowed_models").eq("id", args.accountId).maybeSingle()
+  ]);
+  if (accountResult.error || !accountResult.data) {
+    throw new ActionExecuteError("account model policy is unavailable", "model_unavailable");
+  }
+  if (!model || model.provider !== args.provider || model.is_active !== true || !["active", "deprecated"].includes(model.lifecycle_status ?? "") || model.health_status !== "healthy" || model.model_kind !== "generation") {
+    throw new ActionExecuteError(
+      "saved action model is not active and healthy in the central catalog",
+      "model_unavailable"
+    );
+  }
+  const allowed = accountResult.data.allowed_models;
+  if (allowed !== null && (!Array.isArray(allowed) || !allowed.every((value) => typeof value === "string") || !allowed.includes(model.id))) {
+    throw new ActionExecuteError(
+      "saved action model is not allowed for this account",
+      "model_unavailable"
+    );
+  }
+  const providerModelId = model.provider_model_id?.trim() || model.id;
+  if (!providerModelId) {
+    throw new ActionExecuteError(
+      "saved action model has no provider identifier",
+      "model_unavailable"
+    );
+  }
+  const price = verifiedCatalogPrice(model);
+  if (args.platformFunded && !price) {
+    throw new ActionExecuteError(
+      "platform-funded action model has no verified central pricing",
+      "model_unavailable"
+    );
+  }
+  return {
+    registryId: model.id,
+    providerModelId,
+    priceInput1k: price?.input ?? null,
+    priceOutput1k: price?.output ?? null,
+    pricingSource: price?.source ?? null,
+    platformFunded: args.platformFunded
+  };
+}
+function catalogCostUsd(priceInput1k, priceOutput1k, inputTokens, outputTokens) {
+  if (priceInput1k == null || priceOutput1k == null) return null;
+  const usd = inputTokens / 1e3 * priceInput1k + outputTokens / 1e3 * priceOutput1k;
+  return Number.isFinite(usd) && usd >= 0 ? Math.round(usd * 1e6) / 1e6 : null;
 }
 async function dispatch(metadata, input, opts) {
   const impl = metadata.implementation;
@@ -61279,7 +61419,16 @@ function modelOf(impl) {
 }
 
 // packages/actions-engine/src/rerank/hosted-reranker.ts
+var HostedRerankResponseError = class extends Error {
+  constructor(message, fallbackReason) {
+    super(message);
+    this.fallbackReason = fallbackReason;
+    this.name = "HostedRerankResponseError";
+  }
+  fallbackReason;
+};
 var DEFAULT_TIMEOUT_MS = 2500;
+var TEI_MAX_CLIENT_BATCH = 32;
 var PROVIDERS = {
   cohere: {
     endpoint: "https://api.cohere.com/v1/rerank",
@@ -61335,78 +61484,132 @@ async function rerankHosted(task, candidates, config2) {
     throw new Error(`Unsupported rerank provider: ${provider}`);
   }
   const documentTexts = candidates.map(formatCandidateText);
-  let body;
-  if (provider === "tei") {
-    body = JSON.stringify({
+  const buildBody = (texts) => {
+    if (provider === "tei") {
+      return JSON.stringify({
+        query: task,
+        texts,
+        raw_scores: false,
+        truncate: true,
+        truncation_direction: "Right"
+      });
+    }
+    if (provider === "custom") {
+      return JSON.stringify({
+        query: task,
+        texts,
+        documents: texts,
+        model: defaultModel || void 0
+      });
+    }
+    return JSON.stringify({
       query: task,
-      texts: documentTexts,
-      raw_scores: false,
-      truncate: true,
-      truncation_direction: "Right"
-    });
-  } else if (provider === "custom") {
-    body = JSON.stringify({
-      query: task,
-      texts: documentTexts,
-      documents: documentTexts,
-      model: defaultModel || void 0
-    });
-  } else {
-    body = JSON.stringify({
-      query: task,
-      documents: documentTexts,
+      documents: texts,
       model: defaultModel
     });
+  };
+  const chunkSize = provider === "tei" || provider === "custom" ? TEI_MAX_CLIENT_BATCH : documentTexts.length;
+  const chunks = [];
+  for (let start = 0; start < documentTexts.length; start += chunkSize) {
+    chunks.push({ start, texts: documentTexts.slice(start, start + chunkSize) });
   }
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs || DEFAULT_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers,
-      body,
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      throw new Error(`Hosted reranker HTTP ${res.status}: ${errText.slice(0, 200)}`);
-    }
-    const data = await res.json();
-    const scores = {};
+  const parseChunkScores = (chunk, data) => {
     let resultsArray = [];
     if (Array.isArray(data)) {
       resultsArray = data;
-    } else if (data && Array.isArray(data.results)) {
+    } else if (data && typeof data === "object" && Array.isArray(data.results)) {
       resultsArray = data.results;
     } else if (data && typeof data === "object") {
       const arrayProp = Object.values(data).find(Array.isArray);
-      if (arrayProp) {
-        resultsArray = arrayProp;
-      }
+      if (arrayProp) resultsArray = arrayProp;
     }
     if (resultsArray.length === 0) {
-      console.warn("[hosted-reranker] Received empty or unparseable reranker response:", data);
-      return {};
+      throw new HostedRerankResponseError(
+        "Hosted reranker returned an empty or unparseable chunk",
+        "rerank_empty"
+      );
     }
+    const chunkScores = /* @__PURE__ */ new Map();
     for (const item of resultsArray) {
-      if (!item || typeof item !== "object") continue;
+      if (!item || typeof item !== "object") {
+        throw new Error("Hosted reranker returned a malformed result item");
+      }
       const index = typeof item.index === "number" ? item.index : void 0;
-      if (index === void 0 || index < 0 || index >= candidates.length) continue;
+      if (index === void 0 || !Number.isInteger(index) || index < 0 || index >= chunk.texts.length) {
+        throw new Error(
+          `Hosted reranker returned an invalid result index for a ${chunk.texts.length}-text chunk`
+        );
+      }
+      if (chunkScores.has(index)) {
+        throw new Error(`Hosted reranker returned duplicate result index ${index}`);
+      }
       const scoreVal = typeof item.relevance_score === "number" ? item.relevance_score : typeof item.score === "number" ? item.score : typeof item.relevance === "number" ? item.relevance : void 0;
-      if (scoreVal === void 0) continue;
-      const candidate = candidates[index];
-      if (!candidate) continue;
+      if (scoreVal === void 0 || !Number.isFinite(scoreVal)) {
+        throw new Error(`Hosted reranker returned a non-finite score for index ${index}`);
+      }
+      const candidate = candidates[chunk.start + index];
+      if (!candidate) {
+        throw new Error(`Hosted reranker result index ${index} has no matching candidate`);
+      }
       const finalScore = scoreVal > 1 ? scoreVal / 100 : scoreVal;
-      scores[candidate.id] = Math.max(0, Math.min(1, finalScore));
+      chunkScores.set(index, Math.max(0, Math.min(1, finalScore)));
+    }
+    if (chunkScores.size !== chunk.texts.length) {
+      throw new HostedRerankResponseError(
+        `Hosted reranker returned ${chunkScores.size}/${chunk.texts.length} scores for a chunk`,
+        "rerank_partial"
+      );
+    }
+    return chunkScores;
+  };
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs || DEFAULT_TIMEOUT_MS);
+  const chunkFailures = [];
+  try {
+    const responses = await Promise.all(
+      chunks.map(async (chunk) => {
+        try {
+          const res = await fetch(url, {
+            method: "POST",
+            headers,
+            body: buildBody(chunk.texts),
+            signal: controller.signal
+          });
+          if (!res.ok) {
+            const errText = await res.text().catch(() => "");
+            throw new Error(`Hosted reranker HTTP ${res.status}: ${errText.slice(0, 200)}`);
+          }
+          const data = await res.json();
+          return { chunk, chunkScores: parseChunkScores(chunk, data) };
+        } catch (error2) {
+          if (chunkFailures.length === 0) chunkFailures.push({ error: error2 });
+          controller.abort();
+          throw chunkFailures[0].error;
+        }
+      })
+    );
+    clearTimeout(timeoutId);
+    const scores = {};
+    for (const { chunk, chunkScores } of responses) {
+      for (const [index, score] of chunkScores) {
+        const candidate = candidates[chunk.start + index];
+        scores[candidate.id] = score;
+      }
+    }
+    if (Object.keys(scores).length !== candidates.length) {
+      throw new HostedRerankResponseError(
+        `Hosted reranker returned ${Object.keys(scores).length}/${candidates.length} total scores`,
+        "rerank_partial"
+      );
     }
     return scores;
   } catch (error2) {
     clearTimeout(timeoutId);
-    if (error2 instanceof Error && error2.name === "AbortError") {
+    const cause = chunkFailures.length > 0 ? chunkFailures[0].error : error2;
+    if (cause instanceof Error && cause.name === "AbortError") {
       throw new Error(`Hosted reranker request to ${url} timed out.`);
     }
-    throw error2;
+    throw cause;
   }
 }
 
@@ -61415,6 +61618,7 @@ var ReadArgs = external_exports.object({
   kinds: external_exports.array(DocumentKindSchema).optional(),
   scopes: external_exports.array(DocumentScopeSchema).optional(),
   statuses: external_exports.array(DocumentStatusSchema).optional(),
+  exclude_locked: external_exports.boolean().optional(),
   project_id: external_exports.string().uuid().nullable().optional(),
   /** Filter on metadata.custom keys — equality, array-containment, or
    *  {in:[…]} per key, AND across keys. Evaluated in-process against the
@@ -61432,6 +61636,7 @@ async function readMemory(ctx, rawArgs) {
   if (args.kinds?.length) q2 = q2.in("kind", args.kinds);
   if (args.scopes?.length) q2 = q2.in("scope", args.scopes);
   if (args.statuses?.length) q2 = q2.in("status", args.statuses);
+  if (args.exclude_locked) q2 = q2.eq("locked_to_owners", false);
   if (projectId === null) {
     q2 = q2.is("project_id", null);
   } else if (projectId) {
@@ -61644,7 +61849,10 @@ async function search(ctx, rawArgs) {
   }
   const overFetched = await searchRanked(ctx, args, Math.min(requestedLimit * 3, 100));
   if (overFetched.length === 0) return [];
-  const { data: metaRows, error: metaErr } = await ctx.supabase.from("documents").select("id, metadata").eq("account_id", ctx.accountId).in("id", overFetched.map((h2) => h2.id));
+  const { data: metaRows, error: metaErr } = await ctx.supabase.from("documents").select("id, metadata").eq("account_id", ctx.accountId).in(
+    "id",
+    overFetched.map((h2) => h2.id)
+  );
   if (metaErr) throw new Error(`search: metadata filter read failed: ${metaErr.message}`);
   const customById = /* @__PURE__ */ new Map();
   for (const r2 of metaRows ?? []) {
@@ -61659,11 +61867,13 @@ async function searchRanked(ctx, args, limit2) {
   if (mode === "hybrid" && ctx.embed) {
     try {
       const vec = await ctx.embed(args.query);
+      const auditQuery = sanitizeAuditTask(args.query);
       const { data: data2, error: error2 } = await ctx.supabase.rpc("search_documents_hybrid", {
         p_account_id: ctx.accountId,
         p_project_id: projectId,
         p_query_embedding: vec,
         p_query_text: args.query,
+        p_audit_query_preview: auditQuery.task || null,
         p_kinds: args.kinds ?? null,
         p_scopes: null,
         p_limit: limit2
@@ -61824,13 +62034,43 @@ var ExecuteActionArgs = external_exports.object({
 });
 async function executeActionTool(ctx, rawArgs) {
   const args = ExecuteActionArgs.parse(rawArgs);
+  if (ctx.apiBaseUrl && ctx.accessToken) {
+    const base = ctx.apiBaseUrl.replace(/\/+$/, "");
+    const res = await fetch(`${base}/actions/${args.action_id}/execute`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${ctx.accessToken}`,
+        "content-type": "application/json",
+        "Memlin-Account-Id": ctx.accountId
+      },
+      body: JSON.stringify({ input: args.input })
+    });
+    const text = await res.text();
+    let payload = null;
+    try {
+      payload = JSON.parse(text);
+    } catch {
+    }
+    if (!res.ok || !payload || typeof payload.output !== "string") {
+      const message = payload?.error ?? (text.slice(0, 300) || `web API returned ${res.status}`);
+      throw new Error(`${payload?.code ? `${payload.code}: ` : ""}${message}`);
+    }
+    return payload;
+  }
   try {
     const r2 = await executeAction({
       client: ctx.supabase,
+      // Test/server-action contexts may deliberately invoke in-process. A
+      // privileged client is required after the catalog RLS lockdown; falling
+      // back to the caller client is safe because catalog lookup fails closed.
+      catalogClient: ctx.privilegedSupabase ?? ctx.supabase,
       accountId: ctx.accountId,
       actionId: args.action_id,
       input: args.input,
-      userId: ctx.userId ?? null
+      userId: ctx.userId ?? null,
+      // In-process contexts do not carry the canonical funding decision or
+      // credit ledger. BYOK is not wired here either, so refuse platform spend.
+      allowPlatformProviderKey: false
     });
     return r2;
   } catch (e2) {
@@ -62872,7 +63112,7 @@ async function assembleDocsAuthoredBy(ctx, projectId, members, excludeIds, appli
     const authorName = attributedTo ? nameByUserId.get(attributedTo) : void 0;
     if (!attributedTo || !authorName) continue;
     const title = typeof raw.title === "string" ? raw.title : "";
-    const path13 = typeof raw.path === "string" ? raw.path : null;
+    const path14 = typeof raw.path === "string" ? raw.path : null;
     if (kind2 === "skill" && !isSkillTargetedToAgent(metadata, applicability.agentKind)) {
       applicability.onOmitted?.({
         id,
@@ -62881,7 +63121,7 @@ async function assembleDocsAuthoredBy(ctx, projectId, members, excludeIds, appli
         similarity: 0,
         reason: "agent_target_mismatch",
         detail: `author-attributed skill targets [${skillTargetAgents(metadata).join(", ")}], not agent ${applicability.agentKind}`,
-        path: path13
+        path: path14
       });
       continue;
     }
@@ -62894,7 +63134,7 @@ async function assembleDocsAuthoredBy(ctx, projectId, members, excludeIds, appli
         similarity: 0,
         reason: "anti_example_match",
         detail: `author-attributed task high-precision matched skill anti-example: ${antiExample.slice(0, 240)}`,
-        path: path13
+        path: path14
       });
       continue;
     }
@@ -62907,7 +63147,7 @@ async function assembleDocsAuthoredBy(ctx, projectId, members, excludeIds, appli
 \u2026 (truncated \u2014 author-attributed doc)` : rawBody,
       similarity: 0,
       citation: {
-        path: path13,
+        path: path14,
         version_number: version4?.version_number ?? 1,
         updated_at: typeof raw.updated_at === "string" ? raw.updated_at : "",
         // The citation reports the version's true author (possibly null on
@@ -63319,6 +63559,51 @@ function buildDeliveredItemSnapshots(bundle) {
   );
   return snapshots;
 }
+var OMITTED_CANDIDATES_AUDIT_MAX = 40;
+function auditOmissionSample(omitted, cap = OMITTED_CANDIDATES_AUDIT_MAX) {
+  if (omitted.length <= cap) return omitted;
+  if (cap <= 0) return [];
+  const bucketKey = (omission) => omission.reason === "rerank_filtered" && omission.kind === "skill" ? "rerank_filtered:skill" : omission.reason;
+  const bucketOrder = [
+    "rerank_filtered:skill",
+    "rerank_filtered",
+    "pinned_overflow",
+    "agent_target_mismatch",
+    "anti_example_match",
+    "budget_excluded",
+    "marginal_value",
+    "redundant_duplicate",
+    "superseded_by_stamp",
+    "status_filtered",
+    "below_threshold"
+  ];
+  const buckets = /* @__PURE__ */ new Map();
+  for (const omission of omitted) {
+    const key = bucketKey(omission);
+    const bucket = buckets.get(key);
+    if (bucket) bucket.push(omission);
+    else buckets.set(key, [omission]);
+  }
+  const selected = /* @__PURE__ */ new Map();
+  let remaining = cap;
+  for (const key of bucketOrder) {
+    if (key === "below_threshold" || remaining === 0) continue;
+    const first = buckets.get(key)?.[0];
+    if (!first) continue;
+    selected.set(key, [first]);
+    remaining--;
+  }
+  for (const key of bucketOrder) {
+    if (remaining === 0) break;
+    const bucket = buckets.get(key) ?? [];
+    const alreadySelected = selected.get(key)?.length ?? 0;
+    const take = bucket.slice(alreadySelected, alreadySelected + remaining);
+    if (take.length === 0) continue;
+    selected.set(key, [...selected.get(key) ?? [], ...take]);
+    remaining -= take.length;
+  }
+  return bucketOrder.flatMap((key) => selected.get(key) ?? []).slice(0, cap);
+}
 var EmbeddingUnavailableError = class extends Error {
   code = "EMBEDDING_UNAVAILABLE";
   constructor(message) {
@@ -63406,6 +63691,7 @@ function resolveRoutingAuditMetadata(args, projectId) {
     binding_status: projectId ? "bound" : bindingSource === "account_scope" ? "account_scope" : "unbound"
   };
 }
+var AWARENESS_FEED_TIMEOUT_MS = 2500;
 var BUDGET_MICRO_TOKENS = 1500;
 var BUDGET_STANDARD_TOKENS = 4e3;
 var BUDGET_DEEP_TOKENS = 8e3;
@@ -63585,6 +63871,7 @@ async function loadFitnessMultipliers(ctx, candidateIds, resolveTaskCategory) {
       const itemIds = meta?.item_ids;
       const legacyIds = Array.isArray(items) ? items.map((i2) => i2?.id).filter((id) => typeof id === "string") : Array.isArray(itemIds) ? itemIds.filter((id) => typeof id === "string") : [];
       let ids = legacyIds;
+      let skillIds = /* @__PURE__ */ new Set();
       if (Array.isArray(deliveredItems)) {
         ids = [
           ...new Set(
@@ -63594,9 +63881,19 @@ async function loadFitnessMultipliers(ctx, candidateIds, resolveTaskCategory) {
             }).filter((id) => typeof id === "string")
           )
         ];
-        if (deliveredItems.length > 0 && ids.length === 0) ids = legacyIds;
+        skillIds = new Set(
+          deliveredItems.map((i2) => {
+            const row = i2;
+            if (row?.kind !== "skill") return null;
+            return row.document_id ?? row.id;
+          }).filter((id) => typeof id === "string")
+        );
+        if (deliveredItems.length > 0 && ids.length === 0) {
+          ids = legacyIds;
+          skillIds = /* @__PURE__ */ new Set();
+        }
       }
-      if (ids.length > 0) auditToItems.set(inv.id, ids);
+      if (ids.length > 0) auditToItems.set(inv.id, { ids, skillIds });
     }
     const posCounts = /* @__PURE__ */ new Map();
     const negCounts = /* @__PURE__ */ new Map();
@@ -63604,18 +63901,14 @@ async function loadFitnessMultipliers(ctx, candidateIds, resolveTaskCategory) {
       const meta = outcome.metadata;
       const aid = meta?.audit_id;
       if (typeof aid !== "string") continue;
-      const deliveredIds = auditToItems.get(aid);
-      if (!deliveredIds) continue;
-      const hasExplicitAttribution = meta !== null && Object.prototype.hasOwnProperty.call(meta, "applied_item_ids");
-      const deliveredSet = new Set(deliveredIds);
-      const itemIds = hasExplicitAttribution ? Array.isArray(meta?.applied_item_ids) ? [
-        ...new Set(
-          meta.applied_item_ids.filter(
-            (id) => typeof id === "string" && deliveredSet.has(id)
-          )
-        )
-      ] : [] : deliveredIds;
-      accumulateOutcomeCounts(meta, itemIds, resolveTaskCategory, posCounts, negCounts);
+      const delivered = auditToItems.get(aid);
+      if (!delivered) continue;
+      const credits = weightedOutcomeItemCredits({
+        deliveredIds: delivered.ids,
+        skillIds: delivered.skillIds,
+        meta
+      });
+      accumulateWeightedOutcomeCounts(meta, credits, resolveTaskCategory, posCounts, negCounts);
     }
     for (const cid of candidateIds) {
       multipliers.set(cid, fitnessFromCounts(posCounts.get(cid) ?? 0, negCounts.get(cid) ?? 0));
@@ -64273,6 +64566,7 @@ async function assembleBundle(ctx, rawArgs, audit = {}) {
       };
       if (useHybrid) {
         rpcArgs.p_query_text = args.task;
+        rpcArgs.p_audit_query_preview = sanitizeAuditTask(args.task).task || null;
         rpcArgs.p_include_background = args.deep === true;
       }
       const { data, error: error2 } = await ctx.supabase.rpc(rpcName, rpcArgs);
@@ -64850,9 +65144,9 @@ async function assembleBundle(ctx, rawArgs, audit = {}) {
       );
       rerankAuditScores = null;
       rerankLatencyMs = null;
-      rerankFallbackReason = "rerank_error";
+      rerankFallbackReason = e2 instanceof HostedRerankResponseError ? e2.fallbackReason : "rerank_error";
       dropUnverifiedRerankAdmissions(
-        "provisional skill dropped because reranker failed; configured threshold remains authoritative"
+        rerankFallbackReason === "rerank_error" ? "provisional skill dropped because reranker failed; configured threshold remains authoritative" : `provisional skill dropped because reranker returned ${rerankFallbackReason}`
       );
     }
   }
@@ -65375,13 +65669,24 @@ async function assembleBundle(ctx, rawArgs, audit = {}) {
     if (lead) included.unshift(lead);
   }
   const feed = async (name, fallback, run) => {
+    let timeout;
     try {
-      return await run();
+      return await Promise.race([
+        run(),
+        new Promise((_resolve, reject) => {
+          timeout = setTimeout(
+            () => reject(new Error(`timed out after ${AWARENESS_FEED_TIMEOUT_MS}ms`)),
+            AWARENESS_FEED_TIMEOUT_MS
+          );
+        })
+      ]);
     } catch (e2) {
       console.warn(
         `[resolver] ${name} failed: ${e2 instanceof Error ? e2.message : String(e2)} \u2014 proceeding without it`
       );
       return fallback;
+    } finally {
+      if (timeout) clearTimeout(timeout);
     }
   };
   const feedsStartedAt = Date.now();
@@ -66190,7 +66495,7 @@ async function assembleBundle(ctx, rawArgs, audit = {}) {
       overrides: projectBrainPolicy.overridePairs
     },
     omitted_candidates_count: omittedCandidates.length,
-    omitted_candidates: omittedCandidates.slice(0, 40),
+    omitted_candidates: auditOmissionSample(omittedCandidates),
     empty_context_reason,
     brand_guidelines_id: brandGuidelines?.brand_guidelines_id ?? null,
     brand_guidelines_source: brandGuidelines?.source ?? null,
@@ -66289,6 +66594,7 @@ async function assembleBundle(ctx, rawArgs, audit = {}) {
       includeEmbedding ? { ...baseArgs, p_task_embedding: taskEmbedding } : baseArgs
     );
   }
+  const auditWriteStartedAt = Date.now();
   try {
     let { data: auditData, error: auditErr } = await tryAuditCall(true);
     if (auditErr && (auditErr.code === "PGRST202" || /could not find the function|p_task_embedding/i.test(auditErr.message))) {
@@ -66304,6 +66610,7 @@ async function assembleBundle(ctx, rawArgs, audit = {}) {
       `[resolver] audit log unexpected error: ${e2 instanceof Error ? e2.message : String(e2)}`
     );
   }
+  const auditWriteMs = Date.now() - auditWriteStartedAt;
   const postAssemblyTasks = [reactivationDone];
   if (projectId && isDeployTask(args.task)) {
     postAssemblyTasks.push(
@@ -66326,6 +66633,40 @@ async function assembleBundle(ctx, rawArgs, audit = {}) {
         } catch (e2) {
           console.warn(
             `[resolver] last_sync_at stamp failed: ${e2 instanceof Error ? e2.message : String(e2)} \u2014 proceeding`
+          );
+        }
+      })()
+    );
+  }
+  if (auditId && audit.agentInstallationId && ctx.userId && audit.sessionId) {
+    postAssemblyTasks.push(
+      (async () => {
+        try {
+          const activityClient = ctx.privilegedSupabase ?? ctx.supabase;
+          const { error: activityErr } = await activityClient.rpc("record_agent_activity_batch", {
+            p_account_id: ctx.accountId,
+            p_user_id: ctx.userId,
+            p_agent_installation_id: audit.agentInstallationId,
+            p_agent_kind: audit.agentKind ?? ctx.agentKind ?? "unknown",
+            p_events: [
+              {
+                event_id: auditId,
+                event_name: "resolve",
+                occurred_at: resolvedAt,
+                session_id: audit.sessionId,
+                worker_id: "parent",
+                project_id: projectId ?? null,
+                modified_files: [],
+                metadata: { source: "resolver", invocation_source: args.invocation_source ?? null }
+              }
+            ]
+          });
+          if (activityErr) {
+            console.warn(`[resolver] activity floor write failed: ${activityErr.message}`);
+          }
+        } catch (e2) {
+          console.warn(
+            `[resolver] activity floor unexpected error: ${e2 instanceof Error ? e2.message : String(e2)}`
           );
         }
       })()
@@ -66359,7 +66700,9 @@ async function assembleBundle(ctx, rawArgs, audit = {}) {
       })()
     );
   }
+  const postAssemblyStartedAt = Date.now();
   await Promise.all(postAssemblyTasks);
+  const postAssemblyMs = Date.now() - postAssemblyStartedAt;
   return {
     bundle,
     token_budget: { limit: maxTokens, used, truncated },
@@ -66367,10 +66710,19 @@ async function assembleBundle(ctx, rawArgs, audit = {}) {
     resolved_at: resolvedAt,
     active_component: activeComponent,
     active_repo: activeRepo,
-    omitted_candidates: omittedCandidates.slice(0, 40)
+    omitted_candidates: auditOmissionSample(omittedCandidates),
+    latency_ms: {
+      total: Date.now() - bundleStartedAt,
+      audit_write: auditWriteMs,
+      post_assembly: postAssemblyMs
+    }
   };
 }
-var BRAND_DEAD_STATUSES = /* @__PURE__ */ new Set(["rejected", "archived", "merged"]);
+var BRAND_INACTIVE_STATUSES = /* @__PURE__ */ new Set(["proposed", "rejected", "archived", "merged"]);
+function isApprovedBrandLayer(metadata) {
+  const status = typeof metadata?.status === "string" ? metadata.status : "active";
+  return !BRAND_INACTIVE_STATUSES.has(status);
+}
 function pickBrandOverrideLayers(rows, args) {
   const overrideId = rows.find((r2) => r2.component_id === null)?.id ?? null;
   let surfaceId = null;
@@ -66429,9 +66781,7 @@ async function assembleBrandGuidelines(ctx, args) {
         )) {
           return false;
         }
-        const meta = directRow.metadata;
-        const status = typeof meta?.status === "string" ? meta.status : "active";
-        return !BRAND_DEAD_STATUSES.has(status);
+        return isApprovedBrandLayer(directRow.metadata);
       });
       live.sort((a2, b2) => a2.updated_at < b2.updated_at ? 1 : -1);
       const picked = pickBrandOverrideLayers(live, {
@@ -66468,9 +66818,7 @@ async function assembleBrandGuidelines(ctx, args) {
     )) {
       continue;
     }
-    const metadata = r2.metadata ?? {};
-    const metadataStatus = typeof metadata.status === "string" ? metadata.status : "active";
-    if (BRAND_DEAD_STATUSES.has(metadataStatus)) continue;
+    if (!isApprovedBrandLayer(r2.metadata ?? {})) continue;
     const v2 = Array.isArray(r2.document_versions) ? r2.document_versions[0] : r2.document_versions;
     contentById.set(r2.id, {
       content: v2?.content ?? "",
@@ -66497,10 +66845,10 @@ async function assembleBrandGuidelines(ctx, args) {
       ["primary_dark", logos.primary_dark?.storage_path],
       ["favicon", logos.favicon?.storage_path]
     ];
-    for (const [slot, path13] of slots) {
-      if (!path13) continue;
+    for (const [slot, path14] of slots) {
+      if (!path14) continue;
       try {
-        const { data, error: error2 } = await ctx.supabase.storage.from("brand-guidelines-assets").createSignedUrl(path13, BRAND_GUIDELINES_LOGO_SIGNED_URL_TTL_SECONDS);
+        const { data, error: error2 } = await ctx.supabase.storage.from("brand-guidelines-assets").createSignedUrl(path14, BRAND_GUIDELINES_LOGO_SIGNED_URL_TTL_SECONDS);
         if (error2) {
           console.warn(`[resolver] brand-guidelines: sign ${slot} failed: ${error2.message}`);
         } else if (data?.signedUrl) {
@@ -66611,7 +66959,7 @@ var ResolveArgs = external_exports.object({
 });
 async function resolveProposal(ctx, rawArgs) {
   const args = ResolveArgs.parse(rawArgs);
-  const { data: doc, error: readErr } = await ctx.supabase.from("documents").select("id, account_id, project_id, kind, title, metadata").eq("id", args.proposal_id).maybeSingle();
+  const { data: doc, error: readErr } = await ctx.supabase.from("documents").select("id, account_id, project_id, component_id, kind, title, metadata").eq("id", args.proposal_id).maybeSingle();
   if (readErr) throw new Error(`resolve_proposal: ${readErr.message}`);
   if (!doc) throw new Error("resolve_proposal: proposal not found");
   if (doc.account_id !== ctx.accountId) {
@@ -66662,6 +67010,12 @@ async function resolveProposal(ctx, rawArgs) {
   if (existing.proposal_action === "supersede") {
     return applySupersedeProposal(ctx, args.proposal_id, doc, existing, actor, nowIso);
   }
+  const retiredBrandLayers = doc.kind === "brand_guidelines" ? await retireCurrentBrandLayer(ctx, {
+    proposalId: args.proposal_id,
+    projectId: doc.project_id ?? null,
+    componentId: doc.component_id ?? null,
+    nowIso
+  }) : [];
   const { error: error2 } = await ctx.supabase.from("documents").update({
     metadata: {
       ...existing,
@@ -66670,7 +67024,10 @@ async function resolveProposal(ctx, rawArgs) {
       accepted_by_user_sub: actor
     }
   }).eq("id", args.proposal_id);
-  if (error2) throw new Error(`resolve_proposal: accept failed: ${error2.message}`);
+  if (error2) {
+    await restoreBrandLayers(ctx, retiredBrandLayers);
+    throw new Error(`resolve_proposal: accept failed: ${error2.message}`);
+  }
   if (doc.kind === "goal" || doc.kind === "skill") {
     try {
       await ctx.supabase.from("documents").update({ status: "approved" }).eq("id", args.proposal_id).eq("account_id", ctx.accountId);
@@ -66685,12 +67042,14 @@ async function resolveProposal(ctx, rawArgs) {
   }
   if (doc.kind === "brand_guidelines") {
     try {
-      await applyBrandPointer(
-        ctx,
-        doc.project_id ?? null,
-        ctx.accountId,
-        args.proposal_id
-      );
+      if (!doc.component_id) {
+        await applyBrandPointer(
+          ctx,
+          doc.project_id ?? null,
+          ctx.accountId,
+          args.proposal_id
+        );
+      }
     } catch {
     }
   }
@@ -66699,6 +67058,43 @@ async function resolveProposal(ctx, rawArgs) {
     kind: doc.kind,
     title: doc.title
   };
+}
+async function retireCurrentBrandLayer(ctx, args) {
+  let query = ctx.supabase.from("documents").select("id, metadata").eq("account_id", ctx.accountId).eq("kind", "brand_guidelines").neq("id", args.proposalId);
+  query = args.projectId ? query.eq("project_id", args.projectId) : query.is("project_id", null);
+  query = args.componentId ? query.eq("component_id", args.componentId) : query.is("component_id", null);
+  const { data, error: error2 } = await query.limit(20);
+  if (error2)
+    throw new Error(`resolve_proposal: current Brand Book lookup failed: ${error2.message}`);
+  const current = (data ?? []).map((row) => ({ id: row.id, metadata: row.metadata ?? {} })).filter((row) => {
+    const status = row.metadata.status;
+    return status !== "proposed" && status !== "rejected" && status !== "archived" && status !== "merged";
+  });
+  for (const row of current) {
+    const { error: retireError } = await ctx.supabase.from("documents").update({
+      metadata: {
+        ...row.metadata,
+        status: "archived",
+        archived_at: args.nowIso,
+        archived_reason: "replaced_by_approved_brand_scan",
+        replaced_by: args.proposalId
+      }
+    }).eq("id", row.id).eq("account_id", ctx.accountId);
+    if (retireError) {
+      await restoreBrandLayers(ctx, current);
+      throw new Error(
+        `resolve_proposal: current Brand Book retirement failed: ${retireError.message}`
+      );
+    }
+  }
+  return current;
+}
+async function restoreBrandLayers(ctx, rows) {
+  await Promise.all(
+    rows.map(
+      (row) => ctx.supabase.from("documents").update({ metadata: row.metadata }).eq("id", row.id).eq("account_id", ctx.accountId)
+    )
+  );
 }
 var HELD_DIRECTIVE_SUPERSEDE_THRESHOLD = 0.86;
 async function runHeldDirectiveSupersede(ctx, acceptedId, kind2, nowIso) {
@@ -67013,10 +67409,15 @@ async function listHandoffs(ctx, rawArgs) {
   const projectId = args.project_id ?? ctx.projectId ?? null;
   const status = args.status ?? "pending";
   let query = ctx.supabase.from("agent_handoffs").select(
-    "id, project_id, component_id, target_agent_kind, task, path, packet_markdown, status, created_at"
+    "id, project_id, component_id, target_agent_installation_id, target_agent_kind, task, path, packet_markdown, status, created_at"
   ).eq("account_id", ctx.accountId).eq("status", status).order("created_at", { ascending: false }).limit(args.limit ?? 20);
   if (projectId) query = query.eq("project_id", projectId);
   if (args.target_agent_kind) query = query.eq("target_agent_kind", args.target_agent_kind);
+  if (ctx.agentInstallationId) {
+    query = query.or(
+      `target_agent_installation_id.is.null,target_agent_installation_id.eq.${ctx.agentInstallationId}`
+    );
+  }
   const { data, error: error2 } = await query;
   if (error2) throw new Error(`list_handoffs: ${error2.message}`);
   const handoffs = data ?? [];
@@ -67027,7 +67428,13 @@ async function updateHandoff(ctx, rawArgs) {
   const now = (/* @__PURE__ */ new Date()).toISOString();
   const status = args.action === "accept" ? "accepted" : args.action === "complete" ? "completed" : "cancelled";
   const update = args.action === "accept" ? { status, accepted_at: now, updated_at: now } : args.action === "complete" ? { status, completed_at: now, updated_at: now } : { status, cancelled_at: now, updated_at: now };
-  const { data, error: error2 } = await ctx.supabase.from("agent_handoffs").update(update).eq("id", args.handoff_id).eq("account_id", ctx.accountId).select("id, status").maybeSingle();
+  let query = ctx.supabase.from("agent_handoffs").update(update).eq("id", args.handoff_id).eq("account_id", ctx.accountId);
+  if (ctx.agentInstallationId) {
+    query = query.or(
+      `target_agent_installation_id.is.null,target_agent_installation_id.eq.${ctx.agentInstallationId}`
+    );
+  }
+  const { data, error: error2 } = await query.select("id, status").maybeSingle();
   if (error2) throw new Error(`update_handoff: ${error2.message}`);
   if (!data) throw new Error("update_handoff: handoff not found");
   return data;
@@ -67778,10 +68185,10 @@ function renderBundleText(result, task) {
   return lines.join("\n");
 }
 function renderCitation(it2) {
-  const path13 = it2.citation?.path;
+  const path14 = it2.citation?.path;
   const v2 = it2.citation?.version_number;
-  if (path13 && v2 != null) return `\u2014 \`${path13}\` v${v2}`;
-  if (path13) return `\u2014 \`${path13}\``;
+  if (path14 && v2 != null) return `\u2014 \`${path14}\` v${v2}`;
+  if (path14) return `\u2014 \`${path14}\``;
   return "";
 }
 
@@ -68028,11 +68435,12 @@ function resourceTemplates() {
     }
   ];
 }
-async function listResources(ctx) {
+async function listResources(ctx, options2 = {}) {
   let q2 = ctx.supabase.from("documents").select("id, kind, title, path, status, project_id, updated_at").eq("account_id", ctx.accountId).in("kind", RESOURCE_KINDS).order("updated_at", { ascending: false }).limit(LIST_LIMIT);
   if (ctx.projectId) {
     q2 = q2.or(`project_id.eq.${ctx.projectId},project_id.is.null`);
   }
+  if (options2.signal) q2 = q2.abortSignal(options2.signal);
   const { data, error: error2 } = await q2;
   if (error2) throw new Error(`list_resources: ${error2.message}`);
   const rows = data ?? [];
@@ -68385,7 +68793,7 @@ async function writePersistedToken(t2) {
   });
   await atomicRename(tmp, file);
 }
-async function refreshAccessToken(refreshToken) {
+async function refreshAccessToken(refreshToken, options2 = {}) {
   requireClientId();
   const body = new URLSearchParams({
     grant_type: "refresh_token",
@@ -68395,7 +68803,8 @@ async function refreshAccessToken(refreshToken) {
   const res = await fetch(`https://${AUTH0_DOMAIN}/oauth/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString()
+    body: body.toString(),
+    signal: AbortSignal.timeout(Math.max(1, options2.timeoutMs ?? 15e3))
   });
   if (!res.ok) {
     throw new Error(`refresh: ${res.status} ${await res.text()}`);
@@ -68408,17 +68817,17 @@ var DEFAULT_FRESHNESS_MARGIN_MS = 6e4;
 async function getValidAccessToken() {
   return ensureFreshToken(DEFAULT_FRESHNESS_MARGIN_MS);
 }
-async function ensureFreshToken(marginMs = DEFAULT_FRESHNESS_MARGIN_MS) {
+async function ensureFreshToken(marginMs = DEFAULT_FRESHNESS_MARGIN_MS, options2 = {}) {
   const persisted = await readPersistedToken();
   if (!persisted) throw new Error("not signed in \u2014 run `memlin login`");
   if (Date.now() < persisted.expires_at - marginMs) return persisted.access_token;
   if (refreshInFlight) return refreshInFlight;
-  refreshInFlight = doRefresh(persisted, marginMs).finally(() => {
+  refreshInFlight = doRefresh(persisted, marginMs, options2).finally(() => {
     refreshInFlight = null;
   });
   return refreshInFlight;
 }
-async function doRefresh(stale, marginMs) {
+async function doRefresh(stale, marginMs, options2) {
   const latest = await readPersistedToken();
   if (latest && Date.now() < latest.expires_at - marginMs) return latest.access_token;
   try {
@@ -68435,7 +68844,7 @@ async function doRefresh(stale, marginMs) {
     throw new Error("access token expired and no refresh token saved \u2014 run `memlin login`");
   }
   try {
-    const fresh = await refreshAccessToken(refreshToken);
+    const fresh = await refreshAccessToken(refreshToken, options2);
     return await withAuthFileLock(async () => {
       const beforeWrite = await readPersistedToken();
       if (!beforeWrite || beforeWrite.access_token !== refreshSource.access_token) {
@@ -68636,7 +69045,7 @@ function agentDevice() {
 var cachedAgentVersion = null;
 function agentVersion() {
   if (cachedAgentVersion) return cachedAgentVersion;
-  cachedAgentVersion = "0.1.30";
+  cachedAgentVersion = "0.1.32";
   return cachedAgentVersion;
 }
 function agentCapabilities() {
@@ -68842,13 +69251,15 @@ var MemlinApiClient = class {
    *  Returns kind='decision' docs whose `metadata.enforce` is set —
    *  the PreToolUse handler in plugin-core's pre-tool-use-handler
    *  module is the primary caller. */
-  async listEnforceDecisions(opts = {}) {
+  async listEnforceDecisions(opts = {}, requestOpts = {}) {
     const qs = new URLSearchParams();
     if (opts.project_id !== void 0) {
       qs.set("project_id", opts.project_id === null ? "null" : opts.project_id);
     }
     const suffix = qs.toString() ? `?${qs.toString()}` : "";
-    return this.request("GET", `/decisions/enforce${suffix}`);
+    return this.request("GET", `/decisions/enforce${suffix}`, void 0, {
+      accountId: requestOpts.accountId
+    });
   }
   /** POST /usage/event — write a usage_events row from the client.
    *  Server-side enforces an allowlist of event_types (today:
@@ -68859,6 +69270,12 @@ var MemlinApiClient = class {
    *  (multi-account workspaces). */
   async writeUsageEvent(input, opts = {}) {
     return this.request("POST", "/usage/event", input, { accountId: opts.accountId });
+  }
+  /** Batched, idempotent editor-agent telemetry. This stream is deliberately
+   * separate from usage_events: it powers live sessions, subagent visibility,
+   * model analytics, and operational timelines without affecting metering. */
+  async writeAgentActivityBatch(events, opts = {}) {
+    return this.request("POST", "/agent/activity", { events }, opts);
   }
   /** GET /documents — list, filtered. */
   async listDocuments(opts = {}, callOpts = {}) {
@@ -68949,19 +69366,24 @@ var MemlinApiClient = class {
       action
     });
   }
-  async listHandoffs(opts = {}) {
+  async listHandoffs(opts = {}, callOpts = {}) {
     const qs = new URLSearchParams();
     if (opts.project_id) qs.set("project_id", opts.project_id);
     if (opts.target_agent_kind) qs.set("target_agent_kind", opts.target_agent_kind);
     if (opts.status) qs.set("status", opts.status);
     if (opts.limit) qs.set("limit", String(opts.limit));
     const suffix = qs.toString() ? `?${qs.toString()}` : "";
-    return this.request("GET", `/handoffs${suffix}`);
-  }
-  async updateHandoff(handoffId, action) {
-    return this.request("PATCH", `/handoffs/${encodeURIComponent(handoffId)}`, {
-      action
+    return this.request("GET", `/handoffs${suffix}`, void 0, {
+      accountId: callOpts.accountId
     });
+  }
+  async updateHandoff(handoffId, action, opts = {}) {
+    return this.request(
+      "PATCH",
+      `/handoffs/${encodeURIComponent(handoffId)}`,
+      { action },
+      { accountId: opts.accountId }
+    );
   }
   async createHandoff(input) {
     return this.request("POST", "/handoffs", input);
@@ -69064,8 +69486,13 @@ var MemlinApiClient = class {
     return this.request("POST", "/edit-guard", input, { accountId: opts.accountId });
   }
   /** GET /audit/<id>/replay — reconstruct a past resolve's exact bundle. */
-  async replayAudit(auditId) {
-    return this.request("GET", `/audit/${auditId}/replay`);
+  async replayAudit(auditId, opts = {}) {
+    return this.request(
+      "GET",
+      `/audit/${auditId}/replay`,
+      void 0,
+      { accountId: opts.accountId }
+    );
   }
   /** GET /audit/<id>/explain — per-item decomposition of a past resolve's
    *  ranking arithmetic (similarity, kind weight, component boost, rerank,
@@ -69220,8 +69647,8 @@ var MemlinApiClient = class {
    * companion plans row with status='drafted'. Returns the document_id
    * + version metadata for downstream URL construction.
    */
-  async pushPlan(input) {
-    return this.request("POST", "/plans", input);
+  async pushPlan(input, opts = {}) {
+    return this.request("POST", "/plans", input, { accountId: opts.accountId });
   }
   /**
    * GET /plans — list plans for the account, optionally filtered by
@@ -69229,7 +69656,7 @@ var MemlinApiClient = class {
    * UserPromptSubmit + SessionStart hooks to keep ~/.claude/plans/ in
    * sync with the server.
    */
-  async listPlans(opts = {}) {
+  async listPlans(opts = {}, callOpts = {}) {
     const qs = new URLSearchParams();
     if (opts.status) qs.set("status", opts.status);
     if (opts.project_id !== void 0) {
@@ -69239,21 +69666,27 @@ var MemlinApiClient = class {
     const suffix = qs.toString() ? `?${qs.toString()}` : "";
     const res = await this.request(
       "GET",
-      `/plans${suffix}`
+      `/plans${suffix}`,
+      void 0,
+      { accountId: callOpts.accountId }
     );
     return res.plans;
   }
   /** GET /plans/<id> — full plan detail (status + body + bundle ref). */
-  async getPlan(id) {
-    return this.request("GET", `/plans/${encodeURIComponent(id)}`);
+  async getPlan(id, opts = {}) {
+    return this.request("GET", `/plans/${encodeURIComponent(id)}`, void 0, {
+      accountId: opts.accountId
+    });
   }
   /**
    * PATCH /plans/<id> — replace the plan's body (creates a new
    * document_version, auto-embeds). Used by the PostToolUse hook to push
    * Claude Code edits back up to Memlin.
    */
-  async updatePlan(id, input) {
-    return this.request("PATCH", `/plans/${encodeURIComponent(id)}`, input);
+  async updatePlan(id, input, opts = {}) {
+    return this.request("PATCH", `/plans/${encodeURIComponent(id)}`, input, {
+      accountId: opts.accountId
+    });
   }
   /**
    * POST /projects — create a project in the caller's current account.
@@ -69618,13 +70051,16 @@ async function resolveProject(api, cwd, configProjectId) {
   } catch {
   }
   if (configProjectId) {
-    return {
-      project_id: configProjectId,
-      project_name: null,
-      account_id: null,
-      reason: "config",
-      hasGitRemote
-    };
+    const localBinding = await findWorkspaceBinding(absCwd).catch(() => null);
+    if (localBinding?.binding.project_id === configProjectId) {
+      return {
+        project_id: configProjectId,
+        project_name: null,
+        account_id: null,
+        reason: "config",
+        hasGitRemote
+      };
+    }
   }
   return { project_id: null, project_name: null, account_id: null, reason: "none", hasGitRemote };
 }
@@ -69662,6 +70098,9 @@ function detectGitRemotes(cwd) {
   } catch {
   }
   return out;
+}
+function isWorkspaceActive(input) {
+  return Boolean(input.resolvedProjectId) || input.workspaceBound;
 }
 
 // packages/plugin-core/dist/edit-activity.js
@@ -69748,14 +70187,15 @@ var decisionCache = /* @__PURE__ */ new Map();
 function cacheKey(accountId, projectId) {
   return `${accountId}::${projectId ?? "none"}`;
 }
-async function loadEnforcementDecisions(ctx, projectId) {
-  const key = cacheKey(ctx.config.account_id, projectId);
+async function loadEnforcementDecisions(ctx, projectId, accountId) {
+  const key = cacheKey(accountId, projectId);
   const cached2 = decisionCache.get(key);
   if (cached2 && Date.now() - cached2.at < CACHE_TTL_MS) return cached2.decisions;
   try {
-    const { decisions: rows } = await ctx.api.listEnforceDecisions({
-      project_id: projectId
-    });
+    const { decisions: rows } = await ctx.api.listEnforceDecisions(
+      { project_id: projectId },
+      { accountId }
+    );
     const decisions = rows.map((r2) => ({
       id: r2.id,
       title: r2.title,
@@ -69773,6 +70213,7 @@ async function loadEnforcementDecisions(ctx, projectId) {
 async function recordGuardrailEvent(ctx, args) {
   const metadata = {
     tool: args.payload.tool_name,
+    cwd: path9.resolve(args.payload.cwd ?? process.cwd()),
     project_id: args.projectId,
     session_id: args.payload.session_id ?? null,
     enforcement_on: args.enforcementOn,
@@ -69785,10 +70226,13 @@ async function recordGuardrailEvent(ctx, args) {
     }))
   };
   try {
-    await ctx.api.writeUsageEvent({
-      event_type: "tool.guardrail",
-      metadata
-    });
+    await ctx.api.writeUsageEvent(
+      {
+        event_type: "tool.guardrail",
+        metadata
+      },
+      { accountId: args.accountId }
+    );
   } catch (err) {
     log(
       `pre-tool-use: audit write failed (continuing): ${err instanceof Error ? err.message : String(err)}`
@@ -69902,28 +70346,40 @@ async function runPreToolUseHandler(payload) {
   }
   let ctx;
   try {
-    ctx = await getApi();
+    ctx = await getApi({ cwd: payload.cwd ?? process.cwd() });
   } catch {
     return { decision: "allow", reason: null, matched_decisions: [] };
   }
   if (!ctx) return { decision: "allow", reason: null, matched_decisions: [] };
   let projectId = null;
   let projectAccountId = null;
-  try {
-    const resolved = await resolveProject(
-      ctx.api,
-      payload.cwd ?? process.cwd(),
-      ctx.config.project_id
-    );
-    projectId = resolved.project_id;
-    projectAccountId = resolved.account_id;
-  } catch {
+  if (payload.routing_authoritative) {
+    projectId = payload.routed_project_id ?? null;
+    projectAccountId = payload.routed_account_id ?? ctx.config.account_id;
+  } else {
+    try {
+      const resolved = await resolveProject(
+        ctx.api,
+        payload.cwd ?? process.cwd(),
+        ctx.config.project_id
+      );
+      projectId = resolved.project_id;
+      projectAccountId = resolved.account_id;
+    } catch {
+    }
   }
+  if (!payload.routing_authoritative && !isWorkspaceActive({
+    resolvedProjectId: projectId,
+    workspaceBound: ctx.workspaceBound
+  })) {
+    return { decision: "allow", reason: null, matched_decisions: [] };
+  }
+  const effectiveAccountId = projectAccountId ?? ctx.config.account_id;
   const deployVerdict = await evaluateDeployGuard(ctx, payload, projectId, projectAccountId);
   if (deployVerdict) return deployVerdict;
   const editVerdict = await evaluateEditCollision(ctx, payload, projectId, projectAccountId);
   if (editVerdict) return editVerdict;
-  const decisions = await loadEnforcementDecisions(ctx, projectId);
+  const decisions = await loadEnforcementDecisions(ctx, projectId, effectiveAccountId);
   if (decisions.length === 0) {
     return { decision: "allow", reason: null, matched_decisions: [] };
   }
@@ -69941,7 +70397,7 @@ async function runPreToolUseHandler(payload) {
   let outcome = "allow";
   let enforcementOn = false;
   try {
-    const account = await ctx.api.getAccount();
+    const account = await ctx.api.getAccount({ accountId: effectiveAccountId });
     const flag = account.controller_enforcement_enabled;
     enforcementOn = flag === true;
   } catch {
@@ -69966,6 +70422,7 @@ async function runPreToolUseHandler(payload) {
     hits,
     outcome,
     projectId,
+    accountId: effectiveAccountId,
     enforcementOn
   });
   if (!enforcementOn || verdict === null || verdict === "advisory") {
@@ -70200,22 +70657,46 @@ function filterAbsentOnDisk(paths, rootOverride) {
 }
 
 // apps/mcp-server/src/request-routing.ts
+import path12 from "node:path";
 function hasOwn2(input, key) {
   return Object.prototype.hasOwnProperty.call(input, key);
 }
 function nonEmptyString(value) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
+function explicitProjectId(value) {
+  if (value === null) return null;
+  if (typeof value === "string" && value.trim()) return value.trim();
+  throw new Error("project_id must be null or a non-empty string");
+}
 async function resolveRequestRouting(args, config2, deps) {
   const explicitCwd = nonEmptyString(args.cwd);
-  const cwd = explicitCwd ?? config2.cwd;
-  const cwdChanged = cwd !== config2.cwd;
+  const startupCwd = path12.resolve(config2.cwd);
+  const cwd = explicitCwd ? path12.resolve(startupCwd, explicitCwd) : startupCwd;
+  const cwdChanged = cwd !== startupCwd;
+  const projectIdWasExplicit = hasOwn2(args, "project_id");
+  const requestedProjectId = projectIdWasExplicit ? explicitProjectId(args.project_id) : null;
   const gitRemoteWasExplicit = hasOwn2(args, "git_remote");
   const explicitGitRemote = nonEmptyString(args.git_remote);
   const discoveredGitRemote = gitRemoteWasExplicit ? null : deps.readGitRemote(cwd);
   const gitRemote = explicitGitRemote ?? discoveredGitRemote ?? (!cwdChanged && !gitRemoteWasExplicit ? config2.gitRemote : null);
-  if (hasOwn2(args, "project_id")) {
-    const projectId = nonEmptyString(args.project_id);
+  if (projectIdWasExplicit) {
+    const projectId = requestedProjectId;
+    const pin2 = await deps.findWorkspaceBinding(cwd);
+    if (pin2) {
+      return {
+        accountId: pin2.binding.account_id,
+        projectId,
+        cwd,
+        gitRemote,
+        bindingSource: projectId ? "explicit_project" : "account_scope"
+      };
+    }
+    if (cwdChanged) {
+      throw new Error(
+        `project_id: ${projectId === null ? "null" : "an explicit project"} for a different cwd requires that workspace to be linked to an account`
+      );
+    }
     return {
       accountId: config2.accountId,
       projectId,
@@ -70263,7 +70744,13 @@ async function resolveRequestRouting(args, config2, deps) {
     projectId: null,
     cwd,
     gitRemote,
-    bindingSource: gitRemote || explicitCwd ? "unresolved" : "account_scope"
+    // No project, no workspace pin, and no deliberate `project_id: null`
+    // means this workspace is UNBOUND. Treating a quiet startup fallback as
+    // account scope leaks the user's default organization context into any
+    // random folder the long-lived MCP process happens to serve. Account
+    // scope is still available, but only when the caller or a workspace pin
+    // requests it explicitly above.
+    bindingSource: "unresolved"
   };
 }
 
@@ -70315,7 +70802,7 @@ function runtimeCwd() {
     "INIT_CWD"
   ]) {
     const value = process.env[key]?.trim();
-    if (value && path12.isAbsolute(value)) return path12.resolve(value);
+    if (value && path13.isAbsolute(value)) return path13.resolve(value);
   }
   return process.cwd();
 }
@@ -70361,7 +70848,8 @@ async function resolveConfig() {
   const pinnedProjectId = pin ? pin.binding.project_id ?? null : void 0;
   let accountId = process.env.MEMLIN_ACCOUNT_ID || pinnedAccountId || config2?.account_id || "";
   const userId = process.env.MEMLIN_USER_ID || config2?.user_id || "";
-  let projectId = process.env.MEMLIN_PROJECT_ID || (pinnedProjectId !== void 0 ? pinnedProjectId : config2?.project_id ?? null);
+  const environmentProjectId = process.env.MEMLIN_PROJECT_ID?.trim() || null;
+  let projectId = environmentProjectId || (pinnedProjectId !== void 0 ? pinnedProjectId : null);
   const accessToken = await currentAccessToken(config2);
   if (!supabaseUrl || !supabaseAnon || !accessToken || !accountId || !userId) {
     const missing = [
@@ -70375,7 +70863,7 @@ async function resolveConfig() {
       `Memlin MCP: cannot resolve config (missing: ${missing}). Run \`memlin login\` (or /memlin-login) to populate ~/.config/memlin/, or set MEMLIN_* env vars manually.`
     );
   }
-  const resolved = await resolveProject2({
+  const resolved = environmentProjectId || pin ? null : await resolveProject2({
     apiUrl,
     accessToken,
     accountId,
@@ -70397,7 +70885,13 @@ async function resolveConfig() {
     cwd,
     gitRemote,
     authConfig: config2,
-    authConfigRevision: authConfigRevision(config2)
+    authConfigRevision: authConfigRevision(config2),
+    // resources/list may expose account-wide rows only when the workspace pin
+    // explicitly opted into account scope. A signed-in but unlinked cwd with a
+    // null project must remain empty rather than inheriting global-account docs.
+    resourceEnumerationAllowed: Boolean(
+      projectId || pin && (pin.binding.project_id ?? null) === null
+    )
   };
 }
 function agentKind() {
@@ -70429,7 +70923,7 @@ function readNearestPackageVersion() {
 var cachedAgentVersion2;
 function agentVersion2() {
   if (cachedAgentVersion2 !== void 0) return cachedAgentVersion2;
-  const env = "0.1.30"?.trim();
+  const env = "0.1.32"?.trim();
   cachedAgentVersion2 = env || readNearestPackageVersion();
   return cachedAgentVersion2;
 }
@@ -70448,12 +70942,14 @@ function agentHeaders(accessToken, accountId) {
     "Content-Type": "application/json"
   };
 }
+var PROJECT_RESOLUTION_TIMEOUT_MS = 4e3;
 async function resolveProject2(input) {
   try {
     const res = await fetch(`${input.apiUrl.replace(/\/+$/, "")}/projects/resolve`, {
       method: "POST",
       headers: agentHeaders(input.accessToken, input.accountId),
-      body: JSON.stringify({ cwd: input.cwd, git_remote: input.gitRemote })
+      body: JSON.stringify({ cwd: input.cwd, git_remote: input.gitRemote }),
+      signal: AbortSignal.timeout(PROJECT_RESOLUTION_TIMEOUT_MS)
     });
     if (!res.ok) return null;
     return await res.json();
@@ -70479,11 +70975,29 @@ async function resolveProjectCached(input) {
   });
   return value;
 }
-async function resolveViaApi(args, requestCfg) {
-  const startedAt = Date.now();
+function unresolvedWorkspaceError() {
+  return new Error(
+    "Memlin does not recognize this workspace. Run `memlin link --account <name>` in this workspace, or pass `project_id: null` explicitly when you deliberately want account-wide context."
+  );
+}
+function enforceEnvironmentProjectScope(args) {
+  const environmentProjectId = process.env.MEMLIN_PROJECT_ID?.trim() || null;
+  if (!environmentProjectId) return args;
+  if (Object.prototype.hasOwnProperty.call(args, "project_id")) {
+    const requested = args.project_id;
+    if (typeof requested !== "string" || requested.trim() !== environmentProjectId) {
+      throw new Error(
+        `MEMLIN_PROJECT_ID=${environmentProjectId} is authoritative for this MCP process; project_id cannot override it`
+      );
+    }
+  }
+  return { ...args, project_id: environmentProjectId };
+}
+async function prepareResolveRequest(args, requestCfg) {
+  const routingArgs = enforceEnvironmentProjectScope(args);
   const accessToken = await currentAccessToken(requestCfg.authConfig);
   const routing = await resolveRequestRouting(
-    args,
+    routingArgs,
     {
       accountId: requestCfg.accountId,
       projectId: requestCfg.projectId,
@@ -70502,6 +71016,14 @@ async function resolveViaApi(args, requestCfg) {
       })
     }
   );
+  return { accessToken, routing };
+}
+async function resolveViaApi(args, requestCfg, prepared) {
+  const startedAt = Date.now();
+  const { accessToken, routing } = prepared ?? await prepareResolveRequest(args, requestCfg);
+  if (routing.bindingSource === "unresolved") {
+    throw unresolvedWorkspaceError();
+  }
   const res = await fetch(`${requestCfg.apiUrl.replace(/\/+$/, "")}/resolve`, {
     method: "POST",
     headers: agentHeaders(accessToken, routing.accountId),
@@ -70552,11 +71074,15 @@ function createToolContext(accessToken, requestCfg) {
         // sibling row UP, so a floor can't smear.
         p_platform: os8.platform(),
         p_arch: os8.arch(),
-        p_capabilities: { items: agentCapabilities2().split(",").map((s2) => s2.trim()).filter(Boolean) }
+        p_capabilities: {
+          items: agentCapabilities2().split(",").map((s2) => s2.trim()).filter(Boolean)
+        }
       });
       if (error2) console.warn(`[mcp] record_agent_install failed: ${error2.message} \u2014 proceeding`);
     } catch (e2) {
-      console.warn(`[mcp] record_agent_install threw: ${e2 instanceof Error ? e2.message : String(e2)} \u2014 proceeding`);
+      console.warn(
+        `[mcp] record_agent_install threw: ${e2 instanceof Error ? e2.message : String(e2)} \u2014 proceeding`
+      );
     }
   })();
   return {
@@ -70591,12 +71117,22 @@ function fmtDuration(absMs) {
   if (abs < 864e5) return `${Math.round(abs / 36e5)}h`;
   return `${Math.round(abs / 864e5)}d`;
 }
-async function buildStatus(requestCfg) {
+async function buildStatus(requestCfg, configError = null) {
   const now = Date.now();
   const lines = ["memlin status", "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"];
   const token = await readPersistedToken().catch(() => null);
   const persistedConfig = await readConfig().catch(() => null);
   const environmentToken = process.env.MEMLIN_ACCESS_TOKEN?.trim() || null;
+  const cwd = requestCfg?.cwd ?? runtimeCwd();
+  const workspacePin = await findWorkspaceBinding(cwd).catch(() => null);
+  const accountId = workspacePin?.binding.account_id || requestCfg?.accountId || process.env.MEMLIN_ACCOUNT_ID?.trim() || persistedConfig?.account_id || "";
+  const environmentProjectId = process.env.MEMLIN_PROJECT_ID?.trim() || null;
+  const explicitlyAccountScoped = Boolean(
+    !environmentProjectId && workspacePin && !workspacePin.binding.project_id
+  );
+  const projectId = explicitlyAccountScoped ? null : environmentProjectId || workspacePin?.binding.project_id || requestCfg?.projectId || null;
+  const gitRemote = requestCfg?.gitRemote ?? readGitRemote2(cwd);
+  const apiUrl = requestCfg?.apiUrl || process.env.MEMLIN_API_URL?.trim() || persistedConfig?.api_url || "https://memlin.ai/api/v1";
   const identityBound = Boolean(
     environmentToken || token && persistedConfig && configMatchesAccessToken(persistedConfig, token.access_token)
   );
@@ -70605,9 +71141,9 @@ async function buildStatus(requestCfg) {
   if (!environmentToken && !token) {
     auth = {
       signed_in: false,
-      detail: 'not signed in \u2014 run "Memlin: Sign In" (Command Palette) or /memlin-login'
+      detail: "not signed in \u2014 sign in to Memlin Companion, or run /memlin-login"
     };
-    lines.push('  not signed in \u2014 run "Memlin: Sign In" (Command Palette) or /memlin-login');
+    lines.push("  not signed in \u2014 sign in to Memlin Companion, or run /memlin-login");
   } else if (!identityBound) {
     auth = {
       signed_in: false,
@@ -70647,16 +71183,24 @@ async function buildStatus(requestCfg) {
       `  refresh token: ${environmentToken && !token ? "managed by the host environment" : token?.refresh_token ? "present (auto-rotates)" : "absent (re-run sign in when token expires)"}`
     );
   }
-  lines.push("", "Account", `  account_id:  ${requestCfg.accountId || "(none)"}`);
+  lines.push("", "Account", `  account_id:  ${accountId || "(none)"}`);
   lines.push("", "Project");
-  lines.push(`  cwd:         ${requestCfg.cwd}`);
-  if (requestCfg.projectId) lines.push(`  project:     ${requestCfg.projectId}`);
-  else lines.push("  project:     (none) \u2014 running against account-scope only");
-  if (requestCfg.gitRemote) lines.push(`  git remote:  ${requestCfg.gitRemote}`);
+  lines.push(`  cwd:         ${cwd}`);
+  if (projectId) lines.push(`  project:     ${projectId}`);
+  else if (explicitlyAccountScoped) {
+    lines.push("  project:     (account scope) \u2014 explicitly enabled by this workspace pin");
+  } else {
+    lines.push("  project:     (none) \u2014 workspace is not linked; automatic context is disabled");
+  }
+  if (gitRemote) lines.push(`  git remote:  ${gitRemote}`);
   lines.push("", "Routing");
   lines.push(`  host:        ${agentKind()}`);
-  lines.push(`  api:         ${requestCfg.apiUrl}`);
+  lines.push(`  api:         ${apiUrl}`);
   lines.push("  mcp:         local stdio (node ./dist/mcp-server.js)");
+  if (configError) {
+    const detail = configError instanceof Error ? configError.message : String(configError);
+    lines.push(`  config:      unavailable (${detail})`);
+  }
   let sync = null;
   let localChanges = null;
   lines.push("", "Local state");
@@ -70706,30 +71250,46 @@ async function buildStatus(requestCfg) {
   }
   return {
     auth,
-    account: { account_id: requestCfg.accountId || null },
+    account: { account_id: accountId || null },
     project: {
-      project_id: requestCfg.projectId ?? null,
-      cwd: requestCfg.cwd,
-      git_remote: requestCfg.gitRemote
+      project_id: projectId ?? null,
+      cwd,
+      git_remote: gitRemote,
+      binding_state: projectId ? "project" : explicitlyAccountScoped ? "account_scope" : "unlinked"
     },
     routing: {
       host: agentKind(),
-      api_url: requestCfg.apiUrl,
-      mcp_transport: "local stdio (node ./dist/mcp-server.js)"
+      api_url: apiUrl,
+      mcp_transport: "local stdio (node ./dist/mcp-server.js)",
+      config_error: configError ? configError instanceof Error ? configError.message : String(configError) : null
     },
     sync,
     local_changes: localChanges,
     summary: lines.join("\n")
   };
 }
-var cfg = await resolveConfig().catch((err) => {
-  process.stderr.write(`${err instanceof Error ? err.message : String(err)}
-`);
-  process.exit(1);
-});
-var cfgResolvedAt = Date.now();
+var cfg = null;
+var cfgResolvedAt = 0;
+var cfgResolveInFlight = null;
 var CFG_TTL_MS = 3e4;
 async function refreshCfg() {
+  if (!cfg) {
+    if (!cfgResolveInFlight) {
+      cfgResolveInFlight = (async () => {
+        const nextCfg = await resolveConfig();
+        const finalConfig = await readConfig().catch(() => null);
+        if (authConfigRevision(finalConfig) !== nextCfg.authConfigRevision) {
+          throw new Error("Memlin account changed while request configuration was resolving.");
+        }
+        cfg = nextCfg;
+        cfgResolvedAt = Date.now();
+        return nextCfg;
+      })().finally(() => {
+        cfgResolveInFlight = null;
+      });
+    }
+    return cfgResolveInFlight;
+  }
   const cachedCfg = cfg;
   const liveConfig = await readConfig().catch(() => null);
   const liveRevision = authConfigRevision(liveConfig);
@@ -70742,8 +71302,9 @@ async function refreshCfg() {
     if (finalRevision !== nextCfg.authConfigRevision) {
       throw new Error("Memlin account changed while request configuration was resolving.");
     }
-    if (cfg.authConfigRevision !== cachedCfg.authConfigRevision && cfg.authConfigRevision !== nextCfg.authConfigRevision) {
-      if (cfg.authConfigRevision === finalRevision) return cfg;
+    const latestCfg = cfg;
+    if (latestCfg && latestCfg.authConfigRevision !== cachedCfg.authConfigRevision && latestCfg.authConfigRevision !== nextCfg.authConfigRevision) {
+      if (latestCfg.authConfigRevision === finalRevision) return latestCfg;
       throw new Error("A newer Memlin account configuration is already active.");
     }
     cfg = nextCfg;
@@ -70753,7 +71314,8 @@ async function refreshCfg() {
     const currentConfig = await readConfig().catch(() => null);
     const currentRevision = authConfigRevision(currentConfig);
     if (identityChanged || currentRevision !== cachedCfg.authConfigRevision) {
-      if (cfg.authConfigRevision === currentRevision) return cfg;
+      const latestCfg = cfg;
+      if (latestCfg?.authConfigRevision === currentRevision) return latestCfg;
       throw new Error("Memlin account credentials changed; retry after sign-in finishes.", {
         cause: error2
       });
@@ -70761,6 +71323,17 @@ async function refreshCfg() {
     cfgResolvedAt = Date.now() - CFG_TTL_MS + 5e3;
     return cachedCfg;
   }
+}
+function toolErrorResponse(error2) {
+  const detail = error2 instanceof Error ? error2.message : String(error2);
+  const authFailure = /not signed in|access token|refresh token|credentials|saved Memlin account|sign-in/i.test(
+    detail
+  );
+  const text = authFailure ? `Memlin MCP is connected, but this tool needs a valid sign-in. ${detail} Sign in to Memlin Companion, then retry this tool. If Companion is unavailable, run /memlin-login in the editor. Cursor does not need to restart.` : detail;
+  return {
+    isError: true,
+    content: [{ type: "text", text }]
+  };
 }
 var server = new Server(
   // Cosmetic MCP identity only (never written to the DB). 'dev' when we can't
@@ -70789,13 +71362,44 @@ server.setRequestHandler(GetPromptRequestSchema, async (req) => {
   const result = await getPrompt(createToolContext(token, requestCfg), name, args, resolveFn);
   return result;
 });
+async function hasLocallyUsableResourceAuth() {
+  const [config2, token] = await Promise.all([
+    readConfig().catch(() => null),
+    readPersistedToken().catch(() => null)
+  ]);
+  return Boolean(
+    config2 && token?.access_token && Number.isFinite(token.expires_at) && token.expires_at > Date.now() + 6e4 && configMatchesAccessToken(config2, token.access_token)
+  );
+}
 server.setRequestHandler(ListResourcesRequestSchema, async () => {
-  const requestCfg = await refreshCfg();
-  return {
-    resources: await listResources(
-      createToolContext(await currentAccessToken(requestCfg.authConfig), requestCfg)
-    )
-  };
+  if (!await hasLocallyUsableResourceAuth()) return { resources: [] };
+  const controller = new AbortController();
+  let timer = null;
+  const work = (async () => {
+    const requestCfg = await refreshCfg();
+    if (!requestCfg.resourceEnumerationAllowed) return [];
+    const resources = await listResources(
+      createToolContext(await currentAccessToken(requestCfg.authConfig), requestCfg),
+      { signal: controller.signal }
+    );
+    return resources;
+  })().catch(() => []);
+  try {
+    const resources = await Promise.race([
+      work,
+      new Promise((_resolve, reject) => {
+        timer = setTimeout(() => {
+          controller.abort();
+          reject(new Error("resources/list deadline exceeded"));
+        }, 750);
+      })
+    ]);
+    return { resources };
+  } catch {
+    return { resources: [] };
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 });
 server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({
   resourceTemplates: resourceTemplates()
@@ -70809,42 +71413,64 @@ server.setRequestHandler(ReadResourceRequestSchema, async (req) => {
   return result;
 });
 server.setRequestHandler(CallToolRequestSchema, async (req) => {
-  const requestCfg = await refreshCfg();
   const name = req.params.name;
   const args = req.params.arguments ?? {};
-  try {
-    const verdict = await runPreToolUseHandler({
-      tool_name: name,
-      tool_input: args,
-      cwd: requestCfg.cwd,
-      ...process.env.MEMLIN_SESSION_ID ? { session_id: process.env.MEMLIN_SESSION_ID } : {}
-    });
-    if (verdict.decision === "block") {
-      const idsSuffix = verdict.matched_decisions.length > 0 ? ` (matched ${verdict.matched_decisions.length} Memlin decision${verdict.matched_decisions.length === 1 ? "" : "s"})` : "";
-      return {
-        isError: true,
-        content: [
-          {
-            type: "text",
-            text: `Memlin guardrail blocked this call: ${verdict.reason}${idsSuffix}`
-          }
-        ]
-      };
+  if (name === "memlin_status") {
+    let statusCfg = null;
+    let configError = null;
+    try {
+      statusCfg = await refreshCfg();
+    } catch (error2) {
+      configError = error2;
     }
-  } catch {
+    try {
+      const result = await buildStatus(statusCfg, configError);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (error2) {
+      return toolErrorResponse(error2);
+    }
   }
   try {
-    const result = name === "memlin_status" ? await buildStatus(requestCfg) : name === "memlin_resolve_task" ? await resolveViaApi(args, requestCfg) : await callTool(
+    const requestCfg = await refreshCfg();
+    const preparedResolve = name === "memlin_resolve_task" ? await prepareResolveRequest(args, requestCfg) : null;
+    if (preparedResolve?.routing.bindingSource === "unresolved") {
+      throw unresolvedWorkspaceError();
+    }
+    const controllerCwd = preparedResolve?.routing.cwd ?? requestCfg.cwd;
+    try {
+      const verdict = await runPreToolUseHandler({
+        tool_name: name,
+        tool_input: args,
+        cwd: controllerCwd,
+        ...preparedResolve ? {
+          routed_account_id: preparedResolve.routing.accountId,
+          routed_project_id: preparedResolve.routing.projectId,
+          routing_authoritative: true
+        } : {},
+        ...process.env.MEMLIN_SESSION_ID ? { session_id: process.env.MEMLIN_SESSION_ID } : {}
+      });
+      if (verdict.decision === "block") {
+        const idsSuffix = verdict.matched_decisions.length > 0 ? ` (matched ${verdict.matched_decisions.length} Memlin decision${verdict.matched_decisions.length === 1 ? "" : "s"})` : "";
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Memlin guardrail blocked this call: ${verdict.reason}${idsSuffix}`
+            }
+          ]
+        };
+      }
+    } catch {
+    }
+    const result = name === "memlin_resolve_task" ? await resolveViaApi(args, requestCfg, preparedResolve ?? void 0) : await callTool(
       createToolContext(await currentAccessToken(requestCfg.authConfig), requestCfg),
       name,
       args
     );
     return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-  } catch (err) {
-    return {
-      isError: true,
-      content: [{ type: "text", text: err instanceof Error ? err.message : String(err) }]
-    };
+  } catch (error2) {
+    return toolErrorResponse(error2);
   }
 });
 var transport = new StdioServerTransport();
