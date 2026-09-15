@@ -5,6 +5,11 @@
         "type": "command",
         "command": "node \"./dist/hooks/session-start.js\"",
         "timeout": 15
+      },
+      {
+        "type": "command",
+        "command": "node \"./dist/hooks/user-prompt-submit.js\"",
+        "timeout": 15
       }
     ],
     "PreToolUse": [

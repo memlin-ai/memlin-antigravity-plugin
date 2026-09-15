@@ -2,7 +2,10 @@
   "mcpServers": {
     "memlin": {
       "command": "node",
-      "args": ["./dist/mcp-server.js"],
+      "args": [
+        "-e",
+        "const fs=require('node:fs'),path=require('node:path'),os=require('node:os');const h=os.homedir();const p=[process.env.MEMLIN_PLUGIN_DIR&&path.join(process.env.MEMLIN_PLUGIN_DIR,'dist','mcp-server.js'),path.join(h,'.gemini','config','plugins','memlin','dist','mcp-server.js'),path.join(h,'.gemini','antigravity-cli','plugins','memlin','dist','mcp-server.js'),path.join(process.cwd(),'.agents','plugins','memlin','dist','mcp-server.js'),path.join(process.cwd(),'antigravity-plugin-out','dist','mcp-server.js')].filter(Boolean).find(fs.existsSync);if(!p){process.stderr.write('Memlin MCP server not found\\n');process.exit(1);}import(require('node:url').pathToFileURL(p).href);"
+      ],
       "env": {
         "MEMLIN_HOST": "antigravity"
       }
