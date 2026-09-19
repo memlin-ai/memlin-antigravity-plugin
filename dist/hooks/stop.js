@@ -8778,7 +8778,7 @@ var BrandGuidelinesFrontmatterSchema = external_exports.object({
   imagery: external_exports.array(BrandImageryNoteSchema).optional()
 });
 
-// packages/shared/dist/brand-guidelines-frontmatter.js
+// packages/shared/dist/safe-frontmatter.js
 var import_gray_matter = __toESM(require_gray_matter(), 1);
 
 // packages/shared/dist/redact.js
@@ -9539,9 +9539,6 @@ function isNegativeFeedback(text) {
   return classifyNegativeFeedback(text).isNegative;
 }
 
-// packages/shared/dist/skill-frontmatter.js
-var import_gray_matter2 = __toESM(require_gray_matter(), 1);
-
 // packages/shared/dist/model-prices.js
 var MODEL_PRICES = {
   // Anthropic. Opus was absent until 2026-07-23, which meant every Opus turn —
@@ -9587,10 +9584,11 @@ var MODEL_PRICES = {
   "text-embedding-3-small": { inputUsdPerMTok: 0.02, outputUsdPerMTok: 0 },
   "gpt-4.1-mini": { inputUsdPerMTok: 0.4, outputUsdPerMTok: 1.6 }
 };
+var SAVINGS_BASELINE_MODEL_ID = "claude-sonnet-4-6";
 
 // packages/shared/dist/usage-stats.js
-var SONNET_INPUT_USD_PER_MTOK = MODEL_PRICES["claude-sonnet-4-6"].inputUsdPerMTok;
-var SONNET_OUTPUT_USD_PER_MTOK = MODEL_PRICES["claude-sonnet-4-6"].outputUsdPerMTok;
+var SONNET_INPUT_USD_PER_MTOK = MODEL_PRICES[SAVINGS_BASELINE_MODEL_ID].inputUsdPerMTok;
+var SONNET_OUTPUT_USD_PER_MTOK = MODEL_PRICES[SAVINGS_BASELINE_MODEL_ID].outputUsdPerMTok;
 var OUTPUT_MULTIPLIER = 0.3;
 function estCostUsd(inputTokens, usdPerMTok) {
   if (usdPerMTok !== void 0 && Number.isFinite(usdPerMTok) && usdPerMTok >= 0) {
@@ -9624,6 +9622,187 @@ var FEATURE_DISCOVERY_SYSTEM = [
   '{ "features": [ { "name": string, "summary": string, "members": string[] } ] }',
   "where each members entry is an id from the inventory. No prose outside the JSON."
 ].join("\n");
+
+// packages/shared/dist/light-native.js
+var LIGHT_READER_LIMITS = Object.freeze({
+  maxDepth: 3,
+  filesPerHost: 200,
+  memoryFileBytes: 128 * 1024,
+  planFileBytes: 64 * 1024,
+  skillFileBytes: 64 * 1024,
+  hostBytes: 2 * 1024 * 1024,
+  skillFoldersPerHost: 200,
+  resourcesPerSkill: 200,
+  /** Resource files larger than this are listed without a hash. */
+  resourceHashBytes: 16 * 1024 * 1024
+});
+
+// packages/shared/dist/native-memory-parse.js
+var import_gray_matter2 = __toESM(require_gray_matter(), 1);
+var yamlEngine = import_gray_matter2.default.engines.yaml;
+
+// packages/shared/dist/light.js
+var LIGHT_LIMITS = Object.freeze({
+  users: 1,
+  projects: 1,
+  files: 50,
+  fileBytes: 16 * 1024,
+  /** Active (non-archived) native plans synced as kind='plan'. */
+  plans: 20,
+  planBytes: 64 * 1024,
+  /** Inventoried skills: a read-only SKILL.md backup, kind='skill', always draft. */
+  skills: 50,
+  skillBytes: 64 * 1024,
+  historyVersions: 10,
+  writes: 1e3,
+  captures: 50,
+  accountCostMicros: 1e6,
+  globalCostMicros: 1e8,
+  enrollment: 100,
+  // Recall is budgeted in UTF-8 bytes, which is what it actually bounds; a
+  // byte is never less conservative than a token.
+  recallBytes: 2400,
+  recallExcerptBytes: 360,
+  recallNotes: 3,
+  captureInputTokens: 8e3,
+  captureOutputTokens: 1e3,
+  captureReservationMicros: 2e4,
+  // Memlin-funded QUERY embeddings (search + recall). Past either ceiling the
+  // same search runs without an embedder: title text, still project-scoped.
+  // Enforced by light_reserve_query_embedding (web routes and hosted MCP).
+  queryEmbeddingsPerDay: 2e3,
+  queryEmbeddingsPerMinute: 30,
+  /** Suggestions the Companion may keep open at once (light_upsert_suggestions). */
+  openSuggestions: 500,
+  suggestionsPerRequest: 100
+});
+var LIGHT_HOSTS = [
+  "claude",
+  "codex",
+  "cursor",
+  "antigravity",
+  "windsurf",
+  "devin"
+];
+function boundLightText(text, byteLimit) {
+  const encoder2 = new TextEncoder();
+  const bytes = encoder2.encode(text);
+  return bytes.length <= byteLimit ? text : new TextDecoder("utf-8", { fatal: false }).decode(bytes.slice(0, byteLimit)).replace(/\uFFFD$/, "");
+}
+function redactLightTranscript(text) {
+  return text.replace(
+    /-----BEGIN [^-]*PRIVATE KEY-----[\s\S]*?-----END [^-]*PRIVATE KEY-----/g,
+    "[private key removed]"
+  ).replace(
+    /\b(?:sk-[\w-]{12,}|gh[pousr]_[\w]{16,}|github_pat_[\w]{16,}|AKIA[A-Z0-9]{16})\b/g,
+    "[credential removed]"
+  ).replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, "[token removed]").replace(/\b(Bearer\s+)[A-Za-z0-9._~+\/-]+=*/gi, "$1[removed]").replace(
+    /((?:password|secret|api[_-]?key|access[_-]?token)["']?\s*[=:]\s*)[^\s,;]+/gi,
+    "$1[removed]"
+  );
+}
+function lightCaptureExcluded(text, paths = []) {
+  return /(?:^|[\s/\\"'`])(?:\.env(?:\.[\w-]+)?|id_rsa|id_ed25519|credentials\.json)(?=$|[\s/\\"'`:])/m.test(
+    text
+  ) || paths.some((p) => p.length > 0 && text.includes(p));
+}
+
+// packages/shared/dist/skill-inventory.js
+var AGENTS_HOSTS = ["codex", "cursor", "windsurf", "copilot", "gemini_cli"];
+var CLAUDE_HOSTS = ["claude", "cursor", "windsurf", "copilot"];
+var SKILL_LOCATIONS = [
+  {
+    id: "agents-project",
+    scope: "project",
+    path: ".agents/skills",
+    hosts: [...AGENTS_HOSTS, "antigravity"],
+    owner: "agents",
+    nested: false
+  },
+  {
+    id: "agents-user",
+    scope: "user",
+    path: "~/.agents/skills",
+    hosts: AGENTS_HOSTS,
+    owner: "agents",
+    nested: false
+  },
+  {
+    id: "claude-project",
+    scope: "project",
+    path: ".claude/skills",
+    hosts: CLAUDE_HOSTS,
+    owner: "claude",
+    nested: true
+  },
+  {
+    id: "claude-user",
+    scope: "user",
+    path: "~/.claude/skills",
+    hosts: CLAUDE_HOSTS,
+    owner: "claude",
+    nested: true
+  },
+  {
+    id: "cursor-project",
+    scope: "project",
+    path: ".cursor/skills",
+    hosts: ["cursor"],
+    owner: "cursor",
+    nested: false
+  },
+  {
+    id: "cursor-user",
+    scope: "user",
+    path: "~/.cursor/skills",
+    hosts: ["cursor"],
+    owner: "cursor",
+    nested: false
+  },
+  {
+    id: "windsurf-project",
+    scope: "project",
+    path: ".windsurf/skills",
+    hosts: ["windsurf"],
+    owner: "windsurf",
+    nested: false
+  },
+  {
+    id: "windsurf-user",
+    scope: "user",
+    path: "~/.codeium/windsurf/skills",
+    hosts: ["windsurf"],
+    owner: "windsurf",
+    nested: false
+  },
+  {
+    id: "antigravity-user",
+    scope: "user",
+    path: "~/.gemini/antigravity/skills",
+    hosts: ["antigravity"],
+    owner: "antigravity",
+    nested: false,
+    unverified: true
+  },
+  {
+    id: "antigravity-config-user",
+    scope: "user",
+    path: "~/.gemini/config/skills",
+    hosts: ["antigravity"],
+    owner: "antigravity",
+    nested: false,
+    unverified: true
+  },
+  {
+    id: "codex-legacy-user",
+    scope: "user",
+    path: "~/.codex/skills",
+    hosts: ["codex"],
+    owner: "codex",
+    nested: false,
+    unverified: true
+  }
+];
 
 // packages/shared/dist/memory-taxonomy.js
 var MEMORY_TAXONOMY = [
@@ -12361,73 +12540,8 @@ var ExperienceHarnessRunControlV2Schema = external_exports.discriminatedUnion("a
   }).strict()
 ]);
 
-// packages/shared/dist/light.js
-var LIGHT_LIMITS = Object.freeze({
-  users: 1,
-  projects: 1,
-  files: 50,
-  fileBytes: 16 * 1024,
-  historyVersions: 10,
-  writes: 1e3,
-  captures: 50,
-  accountCostMicros: 1e6,
-  globalCostMicros: 1e8,
-  enrollment: 100,
-  contextTokens: 4e3,
-  captureInputTokens: 8e3,
-  captureOutputTokens: 1e3,
-  captureReservationMicros: 2e4
-});
-function boundLightText(text, byteLimit) {
-  const encoder2 = new TextEncoder();
-  const bytes = encoder2.encode(text);
-  return bytes.length <= byteLimit ? text : new TextDecoder("utf-8", { fatal: false }).decode(bytes.slice(0, byteLimit)).replace(/\uFFFD$/, "");
-}
-function redactLightTranscript(text) {
-  return text.replace(
-    /-----BEGIN [^-]*PRIVATE KEY-----[\s\S]*?-----END [^-]*PRIVATE KEY-----/g,
-    "[private key removed]"
-  ).replace(
-    /\b(?:sk-[\w-]{12,}|gh[pousr]_[\w]{16,}|github_pat_[\w]{16,}|AKIA[A-Z0-9]{16})\b/g,
-    "[credential removed]"
-  ).replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, "[token removed]").replace(/\b(Bearer\s+)[A-Za-z0-9._~+\/-]+=*/gi, "$1[removed]").replace(
-    /((?:password|secret|api[_-]?key|access[_-]?token)["']?\s*[=:]\s*)[^\s,;]+/gi,
-    "$1[removed]"
-  );
-}
-function lightCaptureExcluded(text, paths = []) {
-  return /(?:^|[\s/\\"'`])(?:\.env(?:\.[\w-]+)?|id_rsa|id_ed25519|credentials\.json)(?=$|[\s/\\"'`:])/m.test(
-    text
-  ) || paths.some((p) => p.length > 0 && text.includes(p));
-}
-
-// packages/shared/dist/thought-handoff-v2.js
-var ThoughtHandoffRequestV2Schema = external_exports.object({
-  version: external_exports.literal(2),
-  idempotency_key: external_exports.string().min(1).max(160),
-  task: external_exports.string().trim().min(1).max(8192),
-  target_agent_installation_id: external_exports.string().uuid(),
-  focus_thought_id: external_exports.string().uuid().optional(),
-  context_revision_token: external_exports.string().regex(/^[0-9a-f]{64}$/)
-}).strict();
-var ThoughtHandoffReceiptV2Schema = external_exports.object({
-  version: external_exports.literal(2),
-  kind: external_exports.literal("thought_handoff_v2"),
-  id: external_exports.string().uuid(),
-  root_thought_id: external_exports.string().uuid(),
-  project_id: external_exports.string().uuid().nullable(),
-  target_agent_installation_id: external_exports.string().uuid(),
-  target_agent_kind: external_exports.enum(AGENT_KINDS),
-  task: external_exports.string(),
-  status: external_exports.enum(["preparing", "pending", "accepted", "completed", "cancelled"]),
-  context_bundle_id: external_exports.string().regex(/^[0-9a-f]{64}$/).nullable(),
-  context_revision_token: external_exports.string(),
-  packet_markdown: external_exports.string().nullable(),
-  target_session_id: external_exports.string().nullable(),
-  created_at: external_exports.string(),
-  stale: external_exports.boolean(),
-  replayed: external_exports.boolean().optional()
-}).passthrough();
+// packages/shared/dist/light-provenance.js
+var HOSTS = new Set(LIGHT_HOSTS);
 
 // packages/shared/dist/memory-decisions.js
 var DECISION_KIND_IDS = ["replace", "conflict", "sensitive", "runbook", "goal"];
@@ -12713,6 +12827,34 @@ function renderDecisionBlock(decision, opts) {
   }
   return "";
 }
+
+// packages/shared/dist/thought-handoff-v2.js
+var ThoughtHandoffRequestV2Schema = external_exports.object({
+  version: external_exports.literal(2),
+  idempotency_key: external_exports.string().min(1).max(160),
+  task: external_exports.string().trim().min(1).max(8192),
+  target_agent_installation_id: external_exports.string().uuid(),
+  focus_thought_id: external_exports.string().uuid().optional(),
+  context_revision_token: external_exports.string().regex(/^[0-9a-f]{64}$/)
+}).strict();
+var ThoughtHandoffReceiptV2Schema = external_exports.object({
+  version: external_exports.literal(2),
+  kind: external_exports.literal("thought_handoff_v2"),
+  id: external_exports.string().uuid(),
+  root_thought_id: external_exports.string().uuid(),
+  project_id: external_exports.string().uuid().nullable(),
+  target_agent_installation_id: external_exports.string().uuid(),
+  target_agent_kind: external_exports.enum(AGENT_KINDS),
+  task: external_exports.string(),
+  status: external_exports.enum(["preparing", "pending", "accepted", "completed", "cancelled"]),
+  context_bundle_id: external_exports.string().regex(/^[0-9a-f]{64}$/).nullable(),
+  context_revision_token: external_exports.string(),
+  packet_markdown: external_exports.string().nullable(),
+  target_session_id: external_exports.string().nullable(),
+  created_at: external_exports.string(),
+  stale: external_exports.boolean(),
+  replayed: external_exports.boolean().optional()
+}).passthrough();
 
 // packages/shared/dist/entitlements.js
 var COORDINATION_SELF = [
@@ -25020,7 +25162,7 @@ var CompanionHost = class extends BaseHost {
     super("companion", path5.join(os4.homedir(), ".config", "memlin"));
   }
 };
-var HOSTS = {
+var HOSTS2 = {
   "claude-code": () => new ClaudeCodeHost(),
   cursor: () => new CursorHost(),
   codex: () => new CodexHost(),
@@ -25031,8 +25173,8 @@ var HOSTS = {
 };
 function resolveHost() {
   const envHost = process.env.MEMLIN_HOST ?? (process.env.CURSOR_AGENT ? "cursor" : "claude-code");
-  const make = HOSTS[envHost];
-  return (make ?? HOSTS["claude-code"])();
+  const make = HOSTS2[envHost];
+  return (make ?? HOSTS2["claude-code"])();
 }
 
 // packages/plugin-core/dist/memlin-api-client.js
@@ -25043,7 +25185,7 @@ function agentDevice() {
 var cachedAgentVersion = null;
 function agentVersion() {
   if (cachedAgentVersion) return cachedAgentVersion;
-  cachedAgentVersion = "0.1.41";
+  cachedAgentVersion = "0.1.46";
   return cachedAgentVersion;
 }
 function agentCapabilities() {
@@ -25190,6 +25332,10 @@ var MemlinApiClient = class {
     this.cfg = cfg;
   }
   cfg;
+  /** The configured account (the light-gate cache key when a call names none). */
+  get defaultAccountId() {
+    return this.cfg.accountId;
+  }
   // ---------- low-level ----------
   async authHeaders(includeAccount = true, override = {}) {
     const token = await this.cfg.getAccessToken();
@@ -25509,6 +25655,93 @@ var MemlinApiClient = class {
       { project_id: projectId, status },
       { maxRetries: 0, requestTimeoutMs: 1500 }
     );
+  }
+  // ---------- Light native sync (B2) ----------
+  // Writes are never retried by request() (only GET is), so a reset after the
+  // server committed can't duplicate a version. Error bodies carry a stable
+  // `{error: code}`; see lightErrorCode() in light/sync-api.ts.
+  /** POST /light/documents — versioned Light write; identical content is a metadata-only merge. */
+  async lightWriteDocument(input) {
+    return this.request("POST", "/light/documents", input, { requestTimeoutMs: 2e4 });
+  }
+  /** POST /light/lease — acquire or renew the per-host sync lease. */
+  async lightAcquireLease(input) {
+    return this.request("POST", "/light/lease", input, { requestTimeoutMs: 8e3 });
+  }
+  /** DELETE /light/lease — release a lease this holder owns. */
+  async lightReleaseLease(input) {
+    return this.request("DELETE", "/light/lease", input, { requestTimeoutMs: 5e3 });
+  }
+  /** POST /light/sync with per-host agent statuses. */
+  async lightReportSync(input) {
+    return this.request("POST", "/light/sync", input, { requestTimeoutMs: 8e3 });
+  }
+  /** GET /light/suppressions — forgotten items (the same hash never reimports). */
+  async listLightSuppressions() {
+    return (await this.request(
+      "GET",
+      "/light/suppressions",
+      void 0,
+      { requestTimeoutMs: 8e3 }
+    )).suppressions;
+  }
+  /** POST /light/suppressions */
+  async lightSuppress(input) {
+    return this.request("POST", "/light/suppressions", input, { requestTimeoutMs: 8e3 });
+  }
+  /** DELETE /light/suppressions */
+  async lightUnsuppress(id) {
+    return this.request("DELETE", "/light/suppressions", { id }, { requestTimeoutMs: 8e3 });
+  }
+  /**
+   * POST /light/suggestions — upsert this device's suggestions (≤ 100). The
+   * server never reopens a dismissed / accepted row with the same hash. An
+   * older server answers 404/405; callers treat that as "no server store".
+   */
+  async reportLightSuggestions(input) {
+    return this.request("POST", "/light/suggestions", input, { requestTimeoutMs: 8e3 });
+  }
+  /** GET /light/suggestions?status= */
+  async listLightSuggestions(status) {
+    return (await this.request(
+      "GET",
+      `/light/suggestions?status=${encodeURIComponent(status)}`,
+      void 0,
+      { requestTimeoutMs: 8e3 }
+    )).suggestions;
+  }
+  /**
+   * PATCH /light/suggestions — accept or dismiss. Accepting `suppressed_changed`
+   * deletes the suppression server-side; accepting `source_drift` clears
+   * metadata.custom.memlin_frozen (metadata only, no version).
+   */
+  async resolveLightSuggestion(input) {
+    return this.request("PATCH", "/light/suggestions", input, { requestTimeoutMs: 8e3 });
+  }
+  /** POST /documents/<id>/status — archive / unarchive / approve (curation). */
+  async setDocumentStatus(documentId, action) {
+    return this.request(
+      "POST",
+      `/documents/${encodeURIComponent(documentId)}/status`,
+      { action },
+      { requestTimeoutMs: 8e3 }
+    );
+  }
+  /** GET /light/agents — per-host, per-device sync rows. */
+  async listLightAgents() {
+    return (await this.request(
+      "GET",
+      "/light/agents",
+      void 0,
+      { requestTimeoutMs: 8e3 }
+    )).agents;
+  }
+  /**
+   * POST /plans {document_id} — attach a `drafted` plans row to an existing
+   * plan document (a Light plan after an upgrade, D3). Creates no version.
+   */
+  async backfillPlanRow(documentId) {
+    return this.request("POST", "/plans", { document_id: documentId }, { requestTimeoutMs: 8e3 });
   }
   async lightStatus(accountId) {
     try {
@@ -26309,6 +26542,8 @@ var LOCK_WAIT_MS = 2e3;
 var LOCK_RETRY_MS = 50;
 async function acquireStateLock() {
   const deadline = Date.now() + LOCK_WAIT_MS;
+  await fs6.mkdir(path8.dirname(LOCK_DIR), { recursive: true }).catch(() => {
+  });
   for (; ; ) {
     try {
       await fs6.mkdir(LOCK_DIR);
@@ -26354,6 +26589,74 @@ function getLastResolveForSession(state, sessionId) {
   return state.last_resolve?.session_id ? void 0 : state.last_resolve;
 }
 
+// packages/plugin-core/dist/light-gate.js
+var LIGHT_GATE_TTL_MS = 5 * 6e4;
+var LIGHT_GATE_LOOKUP_TIMEOUT_MS = 3e3;
+var FEATURE_LABEL = {
+  takeover: "Moving memory into Memlin",
+  disable_native: "Turning off your agent's native memory",
+  report: "The usage report",
+  remember: "Remember",
+  plans: "Plan sync",
+  realtime: "Live sync",
+  ingest_native: "Importing native memory into Memlin"
+};
+function lightGateMessage(feature) {
+  const lead = `${FEATURE_LABEL[feature]} isn't part of Memlin Light.`;
+  const why = feature === "takeover" || feature === "disable_native" || feature === "ingest_native" ? " Light keeps your agents' own memory on and syncs it." : "";
+  return `${lead}${why} To save something yourself, use "Add a note" in Memlin Light.`;
+}
+var LightGatedError = class extends Error {
+  constructor(feature) {
+    super(lightGateMessage(feature));
+    this.feature = feature;
+    this.name = "LightGatedError";
+  }
+  feature;
+  code = "light_gated";
+};
+var cache = /* @__PURE__ */ new Map();
+var inflight = /* @__PURE__ */ new Map();
+async function isLightAccount(api, accountId, opts = {}) {
+  if (!api || typeof api.lightStatus !== "function") return false;
+  const now = opts.now ?? Date.now;
+  const key = accountId || api.defaultAccountId || "";
+  const hit = cache.get(key);
+  if (hit && now() - hit.at < LIGHT_GATE_TTL_MS) return hit.light;
+  const pending = inflight.get(key);
+  if (pending) return pending;
+  const lookup = (async () => {
+    let timer;
+    try {
+      const status = await Promise.race([
+        api.lightStatus(accountId || void 0),
+        new Promise((resolve) => {
+          timer = setTimeout(
+            () => resolve("timeout"),
+            opts.timeoutMs ?? LIGHT_GATE_LOOKUP_TIMEOUT_MS
+          );
+        })
+      ]);
+      if (status === "timeout") return false;
+      const light = status?.active === true;
+      cache.set(key, { light, at: now() });
+      return light;
+    } catch {
+      return false;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  })();
+  inflight.set(key, lookup);
+  void lookup.finally(() => {
+    if (inflight.get(key) === lookup) inflight.delete(key);
+  });
+  return lookup;
+}
+async function assertNotLight(api, feature, accountId) {
+  if (await isLightAccount(api, accountId)) throw new LightGatedError(feature);
+}
+
 // packages/plugin-core/dist/plan-sync.js
 function homeBase(host) {
   return (host ?? resolveHost()).homeDir();
@@ -26373,7 +26676,16 @@ async function pushPlanFile(api, file2, opts = {}) {
   const relPath = path9.relative(homeBase(opts.host), file2);
   const state = await readState();
   const existing = state.documents[relPath];
+  if (existing?.document_id && existing.content_hash === hash(raw)) {
+    return {
+      document_id: existing.document_id,
+      version_number: existing.version_number,
+      created: false,
+      unchanged: true
+    };
+  }
   const targetDocId = resolveTargetDocId(existing, existingBinding);
+  await assertNotLight(api, "plans", opts.accountId);
   if (targetDocId) {
     const result2 = await api.updatePlan(
       targetDocId,
@@ -26388,13 +26700,13 @@ async function pushPlanFile(api, file2, opts = {}) {
       documentId: result2.document_id,
       projectId: existingBinding?.projectId ?? null
     });
-    const stampedUpdate = await fs7.readFile(file2, "utf8").catch(() => raw);
+    const stampedUpdate = await syncedHash(file2, raw, { title, body });
     await updateState((s) => {
       s.documents[relPath] = {
         document_id: result2.document_id,
         version_id: existing?.version_id ?? "",
         version_number: result2.version_number,
-        content_hash: hash(stampedUpdate),
+        content_hash: stampedUpdate,
         last_synced_at: (/* @__PURE__ */ new Date()).toISOString(),
         scope: existing?.scope ?? (existingBinding?.projectId ? "project" : "personal"),
         kind: "plan"
@@ -26430,10 +26742,10 @@ async function pushPlanFile(api, file2, opts = {}) {
     documentId: result.document_id,
     projectId: result.project_id
   });
-  const stamped = await fs7.readFile(file2, "utf8").catch(() => raw);
+  const stamped = await syncedHash(file2, raw, { title, body });
   await updateState((s) => {
     const entry = s.documents[relPath];
-    if (entry) entry.content_hash = hash(stamped);
+    if (entry) entry.content_hash = stamped;
   });
   return {
     document_id: result.document_id,
@@ -26441,24 +26753,35 @@ async function pushPlanFile(api, file2, opts = {}) {
     created: true
   };
 }
+async function syncedHash(file2, pushedRaw, pushed) {
+  const current = await fs7.readFile(file2, "utf8").catch(() => null);
+  if (current === null) return hash(pushedRaw);
+  const parsed = parsePlanFile(current);
+  return parsed.title === pushed.title && parsed.body === pushed.body ? hash(current) : hash(pushedRaw);
+}
 async function reconcileKnownPlans(api, opts = {}) {
   const pushed = [];
   const skipped = [];
   const failed = [];
+  const deferred = [];
+  const now = opts.now ?? Date.now();
+  let light;
   let entries;
   try {
     entries = await fs7.readdir(plansDir(opts.host));
   } catch {
-    return { pushed, skipped, failed };
+    return { pushed, skipped, failed, deferred };
   }
   const state = await readState();
   for (const f of entries) {
     if (!f.endsWith(".md")) continue;
     const abs = path9.join(plansDir(opts.host), f);
     let raw;
+    let mtimeMs;
     try {
       const st = await fs7.stat(abs);
       if (!st.isFile() || st.size === 0) continue;
+      mtimeMs = st.mtimeMs;
       raw = await fs7.readFile(abs, "utf8");
     } catch {
       continue;
@@ -26475,14 +26798,24 @@ async function reconcileKnownPlans(api, opts = {}) {
       skipped.push(f);
       continue;
     }
+    if (opts.settleMs && now - mtimeMs < opts.settleMs) {
+      deferred.push(f);
+      continue;
+    }
+    light ??= await isLightAccount(api, opts.accountId);
+    if (light) {
+      skipped.push(f);
+      continue;
+    }
     try {
       const result = await pushPlanFile(api, abs, opts);
-      pushed.push(`${f} (v${result.version_number})`);
+      if (result.unchanged) skipped.push(f);
+      else pushed.push(`${f} (v${result.version_number})`);
     } catch (err) {
       failed.push(`${f}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
-  return { pushed, skipped, failed };
+  return { pushed, skipped, failed, deferred };
 }
 async function stampPlanFile(file2, binding) {
   let raw;
@@ -26575,7 +26908,7 @@ function startLightWorker(cwd, payload) {
 }
 
 // packages/plugin-core/dist/stop-handler.js
-import { execSync as execSync2 } from "node:child_process";
+import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { promises as fs10, constants as fsConstants } from "node:fs";
 
@@ -26847,8 +27180,7 @@ import os8 from "node:os";
 import path13 from "node:path";
 
 // packages/plugin-core/dist/project-resolver.js
-import { execSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync as readFileSync2, lstatSync } from "node:fs";
 import path12 from "node:path";
 init_workspace_binding();
 var ALLOW_ACCOUNT_MISMATCH_ENV = "MEMLIN_ALLOW_ACCOUNT_MISMATCH";
@@ -26912,14 +27244,41 @@ async function resolveProject(api, cwd, configProjectId) {
   };
 }
 function readGitRemote(cwd) {
+  const read = (file2) => {
+    const stat = lstatSync(file2);
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 64 * 1024)
+      throw new Error("Unsupported Git metadata");
+    return readFileSync2(file2, "utf8");
+  };
   try {
-    const url2 = execSync("git remote get-url origin", {
-      windowsHide: true,
-      cwd,
-      stdio: ["ignore", "pipe", "ignore"],
-      encoding: "utf8"
-    }).trim();
-    return normalizeGitRemote(url2);
+    let root = path12.resolve(cwd);
+    for (; ; ) {
+      const marker = path12.join(root, ".git");
+      if (existsSync(marker)) {
+        const info = lstatSync(marker);
+        if (info.isSymbolicLink()) return null;
+        let directory = marker;
+        if (info.isFile()) {
+          const match = /^gitdir:\s*(.+)$/m.exec(read(marker));
+          if (!match) return null;
+          directory = path12.resolve(root, match[1].trim());
+        }
+        const common2 = path12.join(directory, "commondir");
+        if (existsSync(common2)) directory = path12.resolve(directory, read(common2).trim());
+        let origin = false;
+        for (const line of read(path12.join(directory, "config")).split(/\r?\n/)) {
+          if (/^\s*\[/.test(line)) origin = /^\s*\[remote\s+"origin"\]\s*(?:[#;].*)?$/.test(line);
+          else if (origin) {
+            const match = /^\s*url\s*=\s*(.*?)\s*$/.exec(line);
+            if (match) return normalizeGitRemote(match[1].replace(/^"(.*)"$/, "$1"));
+          }
+        }
+        return null;
+      }
+      const parent = path12.dirname(root);
+      if (parent === root) return null;
+      root = parent;
+    }
   } catch {
     return null;
   }
@@ -27493,7 +27852,7 @@ async function heartbeat(cwd) {
 }
 function readGitRemote2(cwd) {
   try {
-    const url2 = execSync2("git remote get-url origin", {
+    const url2 = execSync("git remote get-url origin", {
       windowsHide: true,
       cwd,
       stdio: ["ignore", "pipe", "ignore"],
@@ -28065,9 +28424,9 @@ init_companion_client();
 import { createHash as createHash2, randomUUID as randomUUID4 } from "node:crypto";
 var PLUGIN_RUNTIME_TIMEOUT_MS = 150;
 var VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:[-+][0-9A-Za-z.-]+)?$/;
-var HOSTS2 = /* @__PURE__ */ new Set(["cursor", "antigravity", "codex", "claude-code"]);
+var HOSTS3 = /* @__PURE__ */ new Set(["cursor", "antigravity", "codex", "claude-code"]);
 function ownVersion() {
-  const version2 = "0.1.41";
+  const version2 = "0.1.46";
   return typeof version2 === "string" && VERSION.test(version2) ? version2 : null;
 }
 async function reportPluginRuntime(report) {
@@ -28081,7 +28440,7 @@ async function reportPluginRuntime(report) {
 }
 function reportPluginHookActivity(host, input, cwd) {
   const version2 = ownVersion();
-  if (!version2 || !HOSTS2.has(host) || !cwd || !input || typeof input !== "object" || Array.isArray(input))
+  if (!version2 || !HOSTS3.has(host) || !cwd || !input || typeof input !== "object" || Array.isArray(input))
     return;
   const payload = input;
   const session = payload.session_id ?? payload.conversation_id ?? payload.conversationId;

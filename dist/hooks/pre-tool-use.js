@@ -4238,7 +4238,7 @@ var init_workspace_binding = __esm({
 });
 
 // packages/plugin-core/dist/pre-tool-use-handler.js
-import { execSync as execSync3 } from "node:child_process";
+import { execSync as execSync2 } from "node:child_process";
 import path16 from "node:path";
 
 // node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/external.js
@@ -8512,7 +8512,7 @@ var BrandGuidelinesFrontmatterSchema = external_exports.object({
   imagery: external_exports.array(BrandImageryNoteSchema).optional()
 });
 
-// packages/shared/dist/brand-guidelines-frontmatter.js
+// packages/shared/dist/safe-frontmatter.js
 var import_gray_matter = __toESM(require_gray_matter(), 1);
 
 // packages/shared/dist/redact.js
@@ -9050,9 +9050,6 @@ var DECISION_AUTHORITY = {
   HISTORICAL: AUTHORITY_TIER.HISTORICAL
 };
 
-// packages/shared/dist/skill-frontmatter.js
-var import_gray_matter2 = __toESM(require_gray_matter(), 1);
-
 // packages/shared/dist/model-prices.js
 var MODEL_PRICES = {
   // Anthropic. Opus was absent until 2026-07-23, which meant every Opus turn —
@@ -9098,10 +9095,11 @@ var MODEL_PRICES = {
   "text-embedding-3-small": { inputUsdPerMTok: 0.02, outputUsdPerMTok: 0 },
   "gpt-4.1-mini": { inputUsdPerMTok: 0.4, outputUsdPerMTok: 1.6 }
 };
+var SAVINGS_BASELINE_MODEL_ID = "claude-sonnet-4-6";
 
 // packages/shared/dist/usage-stats.js
-var SONNET_INPUT_USD_PER_MTOK = MODEL_PRICES["claude-sonnet-4-6"].inputUsdPerMTok;
-var SONNET_OUTPUT_USD_PER_MTOK = MODEL_PRICES["claude-sonnet-4-6"].outputUsdPerMTok;
+var SONNET_INPUT_USD_PER_MTOK = MODEL_PRICES[SAVINGS_BASELINE_MODEL_ID].inputUsdPerMTok;
+var SONNET_OUTPUT_USD_PER_MTOK = MODEL_PRICES[SAVINGS_BASELINE_MODEL_ID].outputUsdPerMTok;
 var OUTPUT_MULTIPLIER = 0.3;
 function estCostUsd(inputTokens, usdPerMTok) {
   if (usdPerMTok !== void 0 && Number.isFinite(usdPerMTok) && usdPerMTok >= 0) {
@@ -9135,6 +9133,187 @@ var FEATURE_DISCOVERY_SYSTEM = [
   '{ "features": [ { "name": string, "summary": string, "members": string[] } ] }',
   "where each members entry is an id from the inventory. No prose outside the JSON."
 ].join("\n");
+
+// packages/shared/dist/light-native.js
+var LIGHT_READER_LIMITS = Object.freeze({
+  maxDepth: 3,
+  filesPerHost: 200,
+  memoryFileBytes: 128 * 1024,
+  planFileBytes: 64 * 1024,
+  skillFileBytes: 64 * 1024,
+  hostBytes: 2 * 1024 * 1024,
+  skillFoldersPerHost: 200,
+  resourcesPerSkill: 200,
+  /** Resource files larger than this are listed without a hash. */
+  resourceHashBytes: 16 * 1024 * 1024
+});
+
+// packages/shared/dist/native-memory-parse.js
+var import_gray_matter2 = __toESM(require_gray_matter(), 1);
+var yamlEngine = import_gray_matter2.default.engines.yaml;
+
+// packages/shared/dist/light.js
+var LIGHT_LIMITS = Object.freeze({
+  users: 1,
+  projects: 1,
+  files: 50,
+  fileBytes: 16 * 1024,
+  /** Active (non-archived) native plans synced as kind='plan'. */
+  plans: 20,
+  planBytes: 64 * 1024,
+  /** Inventoried skills: a read-only SKILL.md backup, kind='skill', always draft. */
+  skills: 50,
+  skillBytes: 64 * 1024,
+  historyVersions: 10,
+  writes: 1e3,
+  captures: 50,
+  accountCostMicros: 1e6,
+  globalCostMicros: 1e8,
+  enrollment: 100,
+  // Recall is budgeted in UTF-8 bytes, which is what it actually bounds; a
+  // byte is never less conservative than a token.
+  recallBytes: 2400,
+  recallExcerptBytes: 360,
+  recallNotes: 3,
+  captureInputTokens: 8e3,
+  captureOutputTokens: 1e3,
+  captureReservationMicros: 2e4,
+  // Memlin-funded QUERY embeddings (search + recall). Past either ceiling the
+  // same search runs without an embedder: title text, still project-scoped.
+  // Enforced by light_reserve_query_embedding (web routes and hosted MCP).
+  queryEmbeddingsPerDay: 2e3,
+  queryEmbeddingsPerMinute: 30,
+  /** Suggestions the Companion may keep open at once (light_upsert_suggestions). */
+  openSuggestions: 500,
+  suggestionsPerRequest: 100
+});
+var LIGHT_HOSTS = [
+  "claude",
+  "codex",
+  "cursor",
+  "antigravity",
+  "windsurf",
+  "devin"
+];
+function boundLightText(text, byteLimit) {
+  const encoder2 = new TextEncoder();
+  const bytes = encoder2.encode(text);
+  return bytes.length <= byteLimit ? text : new TextDecoder("utf-8", { fatal: false }).decode(bytes.slice(0, byteLimit)).replace(/\uFFFD$/, "");
+}
+function redactLightTranscript(text) {
+  return text.replace(
+    /-----BEGIN [^-]*PRIVATE KEY-----[\s\S]*?-----END [^-]*PRIVATE KEY-----/g,
+    "[private key removed]"
+  ).replace(
+    /\b(?:sk-[\w-]{12,}|gh[pousr]_[\w]{16,}|github_pat_[\w]{16,}|AKIA[A-Z0-9]{16})\b/g,
+    "[credential removed]"
+  ).replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, "[token removed]").replace(/\b(Bearer\s+)[A-Za-z0-9._~+\/-]+=*/gi, "$1[removed]").replace(
+    /((?:password|secret|api[_-]?key|access[_-]?token)["']?\s*[=:]\s*)[^\s,;]+/gi,
+    "$1[removed]"
+  );
+}
+function lightCaptureExcluded(text, paths = []) {
+  return /(?:^|[\s/\\"'`])(?:\.env(?:\.[\w-]+)?|id_rsa|id_ed25519|credentials\.json)(?=$|[\s/\\"'`:])/m.test(
+    text
+  ) || paths.some((p) => p.length > 0 && text.includes(p));
+}
+
+// packages/shared/dist/skill-inventory.js
+var AGENTS_HOSTS = ["codex", "cursor", "windsurf", "copilot", "gemini_cli"];
+var CLAUDE_HOSTS = ["claude", "cursor", "windsurf", "copilot"];
+var SKILL_LOCATIONS = [
+  {
+    id: "agents-project",
+    scope: "project",
+    path: ".agents/skills",
+    hosts: [...AGENTS_HOSTS, "antigravity"],
+    owner: "agents",
+    nested: false
+  },
+  {
+    id: "agents-user",
+    scope: "user",
+    path: "~/.agents/skills",
+    hosts: AGENTS_HOSTS,
+    owner: "agents",
+    nested: false
+  },
+  {
+    id: "claude-project",
+    scope: "project",
+    path: ".claude/skills",
+    hosts: CLAUDE_HOSTS,
+    owner: "claude",
+    nested: true
+  },
+  {
+    id: "claude-user",
+    scope: "user",
+    path: "~/.claude/skills",
+    hosts: CLAUDE_HOSTS,
+    owner: "claude",
+    nested: true
+  },
+  {
+    id: "cursor-project",
+    scope: "project",
+    path: ".cursor/skills",
+    hosts: ["cursor"],
+    owner: "cursor",
+    nested: false
+  },
+  {
+    id: "cursor-user",
+    scope: "user",
+    path: "~/.cursor/skills",
+    hosts: ["cursor"],
+    owner: "cursor",
+    nested: false
+  },
+  {
+    id: "windsurf-project",
+    scope: "project",
+    path: ".windsurf/skills",
+    hosts: ["windsurf"],
+    owner: "windsurf",
+    nested: false
+  },
+  {
+    id: "windsurf-user",
+    scope: "user",
+    path: "~/.codeium/windsurf/skills",
+    hosts: ["windsurf"],
+    owner: "windsurf",
+    nested: false
+  },
+  {
+    id: "antigravity-user",
+    scope: "user",
+    path: "~/.gemini/antigravity/skills",
+    hosts: ["antigravity"],
+    owner: "antigravity",
+    nested: false,
+    unverified: true
+  },
+  {
+    id: "antigravity-config-user",
+    scope: "user",
+    path: "~/.gemini/config/skills",
+    hosts: ["antigravity"],
+    owner: "antigravity",
+    nested: false,
+    unverified: true
+  },
+  {
+    id: "codex-legacy-user",
+    scope: "user",
+    path: "~/.codex/skills",
+    hosts: ["codex"],
+    owner: "codex",
+    nested: false,
+    unverified: true
+  }
+];
 
 // packages/shared/dist/memory-taxonomy.js
 var MEMORY_TAXONOMY = [
@@ -11872,45 +12051,11 @@ var ExperienceHarnessRunControlV2Schema = external_exports.discriminatedUnion("a
   }).strict()
 ]);
 
-// packages/shared/dist/light.js
-var LIGHT_LIMITS = Object.freeze({
-  users: 1,
-  projects: 1,
-  files: 50,
-  fileBytes: 16 * 1024,
-  historyVersions: 10,
-  writes: 1e3,
-  captures: 50,
-  accountCostMicros: 1e6,
-  globalCostMicros: 1e8,
-  enrollment: 100,
-  contextTokens: 4e3,
-  captureInputTokens: 8e3,
-  captureOutputTokens: 1e3,
-  captureReservationMicros: 2e4
-});
-function boundLightText(text, byteLimit) {
-  const encoder2 = new TextEncoder();
-  const bytes = encoder2.encode(text);
-  return bytes.length <= byteLimit ? text : new TextDecoder("utf-8", { fatal: false }).decode(bytes.slice(0, byteLimit)).replace(/\uFFFD$/, "");
-}
-function redactLightTranscript(text) {
-  return text.replace(
-    /-----BEGIN [^-]*PRIVATE KEY-----[\s\S]*?-----END [^-]*PRIVATE KEY-----/g,
-    "[private key removed]"
-  ).replace(
-    /\b(?:sk-[\w-]{12,}|gh[pousr]_[\w]{16,}|github_pat_[\w]{16,}|AKIA[A-Z0-9]{16})\b/g,
-    "[credential removed]"
-  ).replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, "[token removed]").replace(/\b(Bearer\s+)[A-Za-z0-9._~+\/-]+=*/gi, "$1[removed]").replace(
-    /((?:password|secret|api[_-]?key|access[_-]?token)["']?\s*[=:]\s*)[^\s,;]+/gi,
-    "$1[removed]"
-  );
-}
-function lightCaptureExcluded(text, paths = []) {
-  return /(?:^|[\s/\\"'`])(?:\.env(?:\.[\w-]+)?|id_rsa|id_ed25519|credentials\.json)(?=$|[\s/\\"'`:])/m.test(
-    text
-  ) || paths.some((p) => p.length > 0 && text.includes(p));
-}
+// packages/shared/dist/light-provenance.js
+var HOSTS = new Set(LIGHT_HOSTS);
+
+// packages/shared/dist/decision-prompt.js
+var encoder = new TextEncoder();
 
 // packages/shared/dist/thought-handoff-v2.js
 var ThoughtHandoffRequestV2Schema = external_exports.object({
@@ -11939,9 +12084,6 @@ var ThoughtHandoffReceiptV2Schema = external_exports.object({
   stale: external_exports.boolean(),
   replayed: external_exports.boolean().optional()
 }).passthrough();
-
-// packages/shared/dist/decision-prompt.js
-var encoder = new TextEncoder();
 
 // packages/shared/dist/entitlements.js
 var COORDINATION_SELF = [
@@ -24554,7 +24696,7 @@ var CompanionHost = class extends BaseHost {
     super("companion", path5.join(os4.homedir(), ".config", "memlin"));
   }
 };
-var HOSTS = {
+var HOSTS2 = {
   "claude-code": () => new ClaudeCodeHost(),
   cursor: () => new CursorHost(),
   codex: () => new CodexHost(),
@@ -24565,8 +24707,8 @@ var HOSTS = {
 };
 function resolveHost() {
   const envHost = process.env.MEMLIN_HOST ?? (process.env.CURSOR_AGENT ? "cursor" : "claude-code");
-  const make = HOSTS[envHost];
-  return (make ?? HOSTS["claude-code"])();
+  const make = HOSTS2[envHost];
+  return (make ?? HOSTS2["claude-code"])();
 }
 
 // packages/plugin-core/dist/memlin-api-client.js
@@ -24577,7 +24719,7 @@ function agentDevice() {
 var cachedAgentVersion = null;
 function agentVersion() {
   if (cachedAgentVersion) return cachedAgentVersion;
-  cachedAgentVersion = "0.1.41";
+  cachedAgentVersion = "0.1.46";
   return cachedAgentVersion;
 }
 function agentCapabilities() {
@@ -24724,6 +24866,10 @@ var MemlinApiClient = class {
     this.cfg = cfg;
   }
   cfg;
+  /** The configured account (the light-gate cache key when a call names none). */
+  get defaultAccountId() {
+    return this.cfg.accountId;
+  }
   // ---------- low-level ----------
   async authHeaders(includeAccount = true, override = {}) {
     const token = await this.cfg.getAccessToken();
@@ -25043,6 +25189,93 @@ var MemlinApiClient = class {
       { project_id: projectId, status },
       { maxRetries: 0, requestTimeoutMs: 1500 }
     );
+  }
+  // ---------- Light native sync (B2) ----------
+  // Writes are never retried by request() (only GET is), so a reset after the
+  // server committed can't duplicate a version. Error bodies carry a stable
+  // `{error: code}`; see lightErrorCode() in light/sync-api.ts.
+  /** POST /light/documents — versioned Light write; identical content is a metadata-only merge. */
+  async lightWriteDocument(input) {
+    return this.request("POST", "/light/documents", input, { requestTimeoutMs: 2e4 });
+  }
+  /** POST /light/lease — acquire or renew the per-host sync lease. */
+  async lightAcquireLease(input) {
+    return this.request("POST", "/light/lease", input, { requestTimeoutMs: 8e3 });
+  }
+  /** DELETE /light/lease — release a lease this holder owns. */
+  async lightReleaseLease(input) {
+    return this.request("DELETE", "/light/lease", input, { requestTimeoutMs: 5e3 });
+  }
+  /** POST /light/sync with per-host agent statuses. */
+  async lightReportSync(input) {
+    return this.request("POST", "/light/sync", input, { requestTimeoutMs: 8e3 });
+  }
+  /** GET /light/suppressions — forgotten items (the same hash never reimports). */
+  async listLightSuppressions() {
+    return (await this.request(
+      "GET",
+      "/light/suppressions",
+      void 0,
+      { requestTimeoutMs: 8e3 }
+    )).suppressions;
+  }
+  /** POST /light/suppressions */
+  async lightSuppress(input) {
+    return this.request("POST", "/light/suppressions", input, { requestTimeoutMs: 8e3 });
+  }
+  /** DELETE /light/suppressions */
+  async lightUnsuppress(id) {
+    return this.request("DELETE", "/light/suppressions", { id }, { requestTimeoutMs: 8e3 });
+  }
+  /**
+   * POST /light/suggestions — upsert this device's suggestions (≤ 100). The
+   * server never reopens a dismissed / accepted row with the same hash. An
+   * older server answers 404/405; callers treat that as "no server store".
+   */
+  async reportLightSuggestions(input) {
+    return this.request("POST", "/light/suggestions", input, { requestTimeoutMs: 8e3 });
+  }
+  /** GET /light/suggestions?status= */
+  async listLightSuggestions(status) {
+    return (await this.request(
+      "GET",
+      `/light/suggestions?status=${encodeURIComponent(status)}`,
+      void 0,
+      { requestTimeoutMs: 8e3 }
+    )).suggestions;
+  }
+  /**
+   * PATCH /light/suggestions — accept or dismiss. Accepting `suppressed_changed`
+   * deletes the suppression server-side; accepting `source_drift` clears
+   * metadata.custom.memlin_frozen (metadata only, no version).
+   */
+  async resolveLightSuggestion(input) {
+    return this.request("PATCH", "/light/suggestions", input, { requestTimeoutMs: 8e3 });
+  }
+  /** POST /documents/<id>/status — archive / unarchive / approve (curation). */
+  async setDocumentStatus(documentId, action) {
+    return this.request(
+      "POST",
+      `/documents/${encodeURIComponent(documentId)}/status`,
+      { action },
+      { requestTimeoutMs: 8e3 }
+    );
+  }
+  /** GET /light/agents — per-host, per-device sync rows. */
+  async listLightAgents() {
+    return (await this.request(
+      "GET",
+      "/light/agents",
+      void 0,
+      { requestTimeoutMs: 8e3 }
+    )).agents;
+  }
+  /**
+   * POST /plans {document_id} — attach a `drafted` plans row to an existing
+   * plan document (a Light plan after an upgrade, D3). Creates no version.
+   */
+  async backfillPlanRow(documentId) {
+    return this.request("POST", "/plans", { document_id: documentId }, { requestTimeoutMs: 8e3 });
   }
   async lightStatus(accountId) {
     try {
@@ -25849,8 +26082,7 @@ function log(msg) {
 }
 
 // packages/plugin-core/dist/project-resolver.js
-import { execSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync as readFileSync2, lstatSync } from "node:fs";
 import path8 from "node:path";
 init_workspace_binding();
 async function resolveProject(api, cwd, configProjectId) {
@@ -25903,14 +26135,41 @@ async function resolveProject(api, cwd, configProjectId) {
   };
 }
 function readGitRemote(cwd) {
+  const read = (file2) => {
+    const stat = lstatSync(file2);
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 64 * 1024)
+      throw new Error("Unsupported Git metadata");
+    return readFileSync2(file2, "utf8");
+  };
   try {
-    const url2 = execSync("git remote get-url origin", {
-      windowsHide: true,
-      cwd,
-      stdio: ["ignore", "pipe", "ignore"],
-      encoding: "utf8"
-    }).trim();
-    return normalizeGitRemote(url2);
+    let root = path8.resolve(cwd);
+    for (; ; ) {
+      const marker = path8.join(root, ".git");
+      if (existsSync(marker)) {
+        const info = lstatSync(marker);
+        if (info.isSymbolicLink()) return null;
+        let directory = marker;
+        if (info.isFile()) {
+          const match = /^gitdir:\s*(.+)$/m.exec(read(marker));
+          if (!match) return null;
+          directory = path8.resolve(root, match[1].trim());
+        }
+        const common2 = path8.join(directory, "commondir");
+        if (existsSync(common2)) directory = path8.resolve(directory, read(common2).trim());
+        let origin = false;
+        for (const line of read(path8.join(directory, "config")).split(/\r?\n/)) {
+          if (/^\s*\[/.test(line)) origin = /^\s*\[remote\s+"origin"\]\s*(?:[#;].*)?$/.test(line);
+          else if (origin) {
+            const match = /^\s*url\s*=\s*(.*?)\s*$/.exec(line);
+            if (match) return normalizeGitRemote(match[1].replace(/^"(.*)"$/, "$1"));
+          }
+        }
+        return null;
+      }
+      const parent = path8.dirname(root);
+      if (parent === root) return null;
+      root = parent;
+    }
   } catch {
     return null;
   }
@@ -25942,7 +26201,7 @@ function isWorkspaceActive(input) {
 }
 
 // packages/plugin-core/dist/edit-activity.js
-import { execSync as execSync2 } from "node:child_process";
+import { execSync } from "node:child_process";
 import { realpathSync as realpathSync2 } from "node:fs";
 import path10 from "node:path";
 import os8 from "node:os";
@@ -25954,7 +26213,7 @@ import {
   existsSync as existsSync2,
   mkdirSync,
   openSync,
-  readFileSync as readFileSync2,
+  readFileSync as readFileSync3,
   realpathSync,
   renameSync,
   rmSync,
@@ -26020,7 +26279,7 @@ function emptyState() {
 }
 function readState(file2) {
   try {
-    const parsed = JSON.parse(readFileSync2(file2, "utf8"));
+    const parsed = JSON.parse(readFileSync3(file2, "utf8"));
     if (parsed?.version === STATE_VERSION && parsed.worktrees && Array.isArray(parsed.leases)) {
       return parsed;
     }
@@ -26052,7 +26311,7 @@ function withState(identity, mutate) {
       break;
     } catch {
       try {
-        const lock = JSON.parse(readFileSync2(files.lock, "utf8"));
+        const lock = JSON.parse(readFileSync3(files.lock, "utf8"));
         if (typeof lock.at !== "number" || Date.now() - lock.at > LOCK_STALE_MS) {
           rmSync(files.lock, { force: true });
           continue;
@@ -26171,7 +26430,7 @@ function activeRepositoryClaims(identity, paths, selfAgent = process.env.CLAUDE_
   const conflicts = [];
   for (const name of names) {
     try {
-      const claim = JSON.parse(readFileSync2(path9.join(claimsDir, name), "utf8"));
+      const claim = JSON.parse(readFileSync3(path9.join(claimsDir, name), "utf8"));
       const agent = typeof claim.agent === "string" ? claim.agent : "";
       if (!agent || agent === selfAgent) continue;
       const started = typeof claim.started_at === "string" ? Date.parse(claim.started_at) : NaN;
@@ -26233,7 +26492,7 @@ function editedPathsFromHook(toolName, toolInput) {
 }
 function gitToplevel(cwd) {
   try {
-    const top = execSync2("git rev-parse --show-toplevel", {
+    const top = execSync("git rev-parse --show-toplevel", {
       windowsHide: true,
       cwd,
       stdio: ["ignore", "pipe", "ignore"],
@@ -26272,7 +26531,7 @@ function repoRelativePath(absPath, cwd) {
 }
 function readGitBranch(cwd) {
   try {
-    const branch = execSync2("git rev-parse --abbrev-ref HEAD", {
+    const branch = execSync("git rev-parse --abbrev-ref HEAD", {
       windowsHide: true,
       cwd,
       stdio: ["ignore", "pipe", "ignore"],
@@ -26288,7 +26547,7 @@ function readGitBranch(cwd) {
 // packages/plugin-core/dist/edit-broker.js
 import {
   mkdtempSync,
-  readFileSync as readFileSync4,
+  readFileSync as readFileSync5,
   rmSync as rmSync2,
   writeFileSync as writeFileSync2
 } from "node:fs";
@@ -26298,7 +26557,7 @@ import { execFileSync as execFileSync2, spawnSync } from "node:child_process";
 
 // packages/plugin-core/dist/edit-intent.js
 import crypto5 from "node:crypto";
-import { readFileSync as readFileSync3 } from "node:fs";
+import { readFileSync as readFileSync4 } from "node:fs";
 import path11 from "node:path";
 var WHOLE_FILE_END = 2147483647;
 var PATCH_TOOLS = /* @__PURE__ */ new Set(["edit", "multiedit"]);
@@ -26471,7 +26730,7 @@ function materializeMutation(mutation, cwd) {
   const absolutePath = path11.resolve(cwd, mutation.path);
   let baseContent = "";
   try {
-    baseContent = readFileSync3(absolutePath, "utf8");
+    baseContent = readFileSync4(absolutePath, "utf8");
   } catch {
     baseContent = "";
   }
@@ -26558,7 +26817,7 @@ function buildEditIntents(toolName, toolInput, cwd) {
       if (match?.[2]) {
         try {
           mutations = parseApplyPatch(
-            readFileSync3(path11.resolve(cwd, match[2]), "utf8"),
+            readFileSync4(path11.resolve(cwd, match[2]), "utf8"),
             "shell_patch"
           );
         } catch {
@@ -26642,7 +26901,7 @@ function dryMergeWorktreeIntent(intent, identity, holder, holderRoot) {
   if (intent.proposedContent === null || !identity.head || !holder.head_sha) return "unknown";
   let holderContent;
   try {
-    holderContent = readFileSync4(path12.join(holderRoot, intent.path), "utf8");
+    holderContent = readFileSync5(path12.join(holderRoot, intent.path), "utf8");
   } catch {
     return "unknown";
   }
@@ -27261,7 +27520,7 @@ async function evaluateTriggerMemories(payload, opts = {}) {
 }
 
 // packages/plugin-core/dist/deploy-broker.js
-import { existsSync as existsSync3, mkdirSync as mkdirSync2, readFileSync as readFileSync5, unlinkSync, writeFileSync as writeFileSync3 } from "node:fs";
+import { existsSync as existsSync3, mkdirSync as mkdirSync2, readFileSync as readFileSync6, unlinkSync, writeFileSync as writeFileSync3 } from "node:fs";
 import os11 from "node:os";
 import path15 from "node:path";
 function deployWaiterDir() {
@@ -27319,7 +27578,7 @@ function inferEnvFromBranch(branch) {
 }
 function getRawBranchName(cwd) {
   try {
-    return execSync3("git rev-parse --abbrev-ref HEAD", {
+    return execSync2("git rev-parse --abbrev-ref HEAD", {
       windowsHide: true,
       cwd,
       stdio: ["ignore", "pipe", "ignore"],
@@ -27341,7 +27600,7 @@ function detectEnv(cwd) {
   if (cached2 && Date.now() - cached2.at < ENV_CACHE_TTL_MS) return cached2.env;
   let env = null;
   try {
-    const branch = execSync3("git rev-parse --abbrev-ref HEAD", {
+    const branch = execSync2("git rev-parse --abbrev-ref HEAD", {
       windowsHide: true,
       cwd,
       stdio: ["ignore", "pipe", "ignore"],
@@ -27442,7 +27701,7 @@ function deployCommandOf(payload) {
 }
 function gitHeadSha(cwd) {
   try {
-    const sha2 = execSync3("git rev-parse HEAD", {
+    const sha2 = execSync2("git rev-parse HEAD", {
       windowsHide: true,
       cwd,
       stdio: ["ignore", "pipe", "ignore"],
@@ -27608,7 +27867,7 @@ function summarizeFileDiff(relPath, cwd) {
   if (!cwd) return null;
   const read = (args) => {
     try {
-      return execSync3(`git ${args.join(" ")}`, {
+      return execSync2(`git ${args.join(" ")}`, {
         windowsHide: true,
         cwd,
         stdio: ["ignore", "pipe", "ignore"],
@@ -27765,9 +28024,9 @@ init_companion_client();
 import { createHash, randomUUID as randomUUID4 } from "node:crypto";
 var PLUGIN_RUNTIME_TIMEOUT_MS = 150;
 var VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:[-+][0-9A-Za-z.-]+)?$/;
-var HOSTS2 = /* @__PURE__ */ new Set(["cursor", "antigravity", "codex", "claude-code"]);
+var HOSTS3 = /* @__PURE__ */ new Set(["cursor", "antigravity", "codex", "claude-code"]);
 function ownVersion() {
-  const version2 = "0.1.41";
+  const version2 = "0.1.46";
   return typeof version2 === "string" && VERSION.test(version2) ? version2 : null;
 }
 async function reportPluginRuntime(report) {
@@ -27781,7 +28040,7 @@ async function reportPluginRuntime(report) {
 }
 function reportPluginHookActivity(host, input, cwd) {
   const version2 = ownVersion();
-  if (!version2 || !HOSTS2.has(host) || !cwd || !input || typeof input !== "object" || Array.isArray(input))
+  if (!version2 || !HOSTS3.has(host) || !cwd || !input || typeof input !== "object" || Array.isArray(input))
     return;
   const payload = input;
   const session = payload.session_id ?? payload.conversation_id ?? payload.conversationId;
