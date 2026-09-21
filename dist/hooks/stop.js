@@ -8566,6 +8566,8 @@ var DOCUMENT_KINDS = [
   // (CORPUS_KINDS), and the default export all use explicit kind allow-lists
   // that exclude 'file'. A file enters the core only via an explicit
   // "Promote to Memory" (which writes a separate kind='memory' doc).
+  // Role-marked living docs have one explicit delivery path: a checked feature
+  // pointer/direct read or opt-in CLI copy, never semantic retrieval.
   "file",
   // A personal-first checklist / list (the people-processed "To-dos" tier). Its
   // body is a GFM task list. Like 'file', it's ISOLATED from the resolver/
@@ -8586,6 +8588,17 @@ var DOCUMENT_KINDS = [
 ];
 var DOCUMENT_SCOPES = ["personal", "project", "team"];
 var DOCUMENT_STATUSES = ["draft", "in_review", "approved", "archived"];
+var FEATURE_LABELS = {
+  code: { singular: "Feature", plural: "Features" },
+  general: { singular: "Workstream", plural: "Workstreams" },
+  highlight: { singular: "Highlight", plural: "Highlights" }
+};
+function featureLabel(projectKind, nounOverride) {
+  if (nounOverride === "highlight") return FEATURE_LABELS.highlight;
+  if (nounOverride === "feature") return FEATURE_LABELS.code;
+  if (nounOverride === "workstream") return FEATURE_LABELS.general;
+  return projectKind === "general" ? FEATURE_LABELS.general : FEATURE_LABELS.code;
+}
 var MEMORY_TYPES = [
   "correction",
   "preference",
@@ -9602,26 +9615,38 @@ var SONNET_BLENDED_USD_PER_MTOK = SONNET_INPUT_USD_PER_MTOK + OUTPUT_MULTIPLIER 
 var SAVINGS_USD_PER_TOKEN = estCostUsd(1);
 
 // packages/shared/dist/feature-discovery.js
-var FEATURE_DISCOVERY_SYSTEM = [
-  "You are Memlin's feature mapper. You read the inventory of a software project \u2014",
-  "its components (subsystems), recent pull requests, and plans \u2014 and group them",
-  "into a short list of FEATURES: the real units of work a team organizes around",
-  '(e.g. "Authentication & sessions", "Billing & credits", "Capture pipeline").',
-  "",
-  "Rules:",
-  "- Propose between 4 and 15 features. Fewer is better than padding with noise.",
-  "- A feature is a cohesive capability or workstream, NOT a single file, a layer",
-  '  ("frontend"), or a restatement of the whole project.',
-  "- Each feature's members must be drawn ONLY from the provided item ids. Never",
-  "  invent ids. Omit items that do not clearly belong to any feature.",
-  "- Do NOT duplicate or restate the existing features listed; only propose what is",
-  "  genuinely missing.",
-  "- Name features the way the team would say them out loud: short, exact nouns.",
-  "",
-  "Return ONLY a JSON object of the form:",
-  '{ "features": [ { "name": string, "summary": string, "members": string[] } ] }',
-  "where each members entry is an id from the inventory. No prose outside the JSON."
-].join("\n");
+function featureDiscoverySystem({
+  projectKind = "code",
+  noun
+} = {}) {
+  const label = featureLabel(projectKind, noun);
+  const inventory = projectKind === "general" ? [
+    "You read a project\u2019s shared thoughts, topics, decisions, goals and plans.",
+    `Group them into ${label.plural.toUpperCase()}: cohesive areas of work the team organizes around.`,
+    "Examples include customer research, event planning, hiring and quarterly priorities."
+  ] : [
+    "You read the inventory of a software project: components, recent pull requests, decisions, goals and plans.",
+    `Group them into ${label.plural.toUpperCase()}: cohesive capabilities the team organizes around.`,
+    "Examples include authentication, billing and capture."
+  ];
+  return [
+    `You are Memlin\u2019s ${label.singular.toLowerCase()} mapper.`,
+    ...inventory,
+    "",
+    "Rules:",
+    `- Propose between 4 and 15 ${label.plural.toLowerCase()}. Fewer is better than padding with noise.`,
+    "- Each group is a cohesive area of work, not one item or a restatement of the whole project.",
+    "- Members must be drawn ONLY from the provided item ids. Never invent ids.",
+    "- Omit items that do not clearly belong to any group.",
+    "- Do NOT duplicate or restate existing or previously rejected groups; propose only missing work.",
+    "- Use short, exact names the team would use in conversation.",
+    "",
+    "Return ONLY a JSON object of the form:",
+    '{ "features": [ { "name": string, "summary": string, "members": string[] } ] }',
+    "Each members entry is an id from the inventory. No prose outside the JSON."
+  ].join("\n");
+}
+var FEATURE_DISCOVERY_SYSTEM = featureDiscoverySystem();
 
 // packages/shared/dist/light-native.js
 var LIGHT_READER_LIMITS = Object.freeze({
@@ -12366,6 +12391,7 @@ var ExperienceHarnessManifestV2Schema = external_exports.object({
   root_thought_id: external_exports.string().uuid(),
   root_revision_token: external_exports.string().min(1).max(2048),
   context: ContextManifestV1Schema,
+  harness: external_exports.object({ output_mode: external_exports.enum(["inline", "resource"]) }).strict().optional(),
   nodes: external_exports.array(
     external_exports.object({
       id: external_exports.string().uuid(),
@@ -12390,7 +12416,12 @@ var ExperienceHarnessSaveV2Schema = external_exports.object({
   root_revision_token: external_exports.string().min(1).max(2048),
   harness_id: external_exports.string().uuid().nullable().default(null),
   expected_revision: external_exports.number().int().positive().nullable().default(null),
-  definition: ExperienceHarnessManifestV2Schema.pick({ context: true, nodes: true, edges: true })
+  definition: ExperienceHarnessManifestV2Schema.pick({
+    context: true,
+    nodes: true,
+    edges: true,
+    harness: true
+  })
 }).strict().refine(
   (input) => input.harness_id === null === (input.expected_revision === null),
   "Existing harness requires its current revision"
@@ -25024,6 +25055,188 @@ var NEEDS_YOU_HORIZON_DAYS = 14;
 var HORIZON_MS = NEEDS_YOU_HORIZON_DAYS * 24 * 60 * 60 * 1e3;
 var STALLED_GOAL_AGE_MS = 30 * 24 * 60 * 60 * 1e3;
 
+// packages/shared/dist/research-collection.js
+var ResearchCollectionSourceSchema = external_exports.object({
+  url: external_exports.string().url().max(2048).refine((value) => {
+    try {
+      const url2 = new URL(value);
+      return url2.protocol === "https:" && !url2.username && !url2.password && !url2.hash;
+    } catch {
+      return false;
+    }
+  }, "Use a public HTTPS feed URL"),
+  label: external_exports.string().trim().min(1).max(120),
+  category: external_exports.enum(["official", "community"])
+}).strict();
+var ResearchCollectionSchema = external_exports.object({
+  topics: external_exports.array(external_exports.string().trim().min(2).max(100)).min(1).max(10),
+  sources: external_exports.array(ResearchCollectionSourceSchema).min(1).max(4)
+}).strict();
+
+// packages/shared/dist/feature-tracking.js
+var FEATURE_TRACKING_MODES = ["off", "suggest", "assist", "auto"];
+var FEATURE_NOUNS = ["feature", "workstream", "highlight"];
+var FEATURE_CONTEXT_MODES = ["always", "auto", "off"];
+var FeatureTrackingPolicySchema = external_exports.object({
+  mode: external_exports.enum(FEATURE_TRACKING_MODES),
+  source: external_exports.enum(["light", "project", "account"]),
+  noun: external_exports.enum(FEATURE_NOUNS),
+  project_kind: external_exports.enum(["code", "general"]).nullable(),
+  context_mode: external_exports.enum(FEATURE_CONTEXT_MODES)
+});
+
+// packages/shared/dist/feature-system-contracts.js
+var RESOURCE_ATTACHMENT_ROLES = [
+  "report",
+  "screenshot",
+  "log",
+  "output",
+  "reference"
+];
+
+// packages/shared/dist/files.js
+var FileProvenanceSchema = external_exports.object({
+  client: external_exports.enum(["web", "cli", "mcp", "api"]).default("api"),
+  agent_kind: external_exports.string().max(100).optional(),
+  agent_installation_id: external_exports.string().max(200).optional(),
+  session_id: external_exports.string().max(200).optional()
+}).strict();
+var FileUploadPreparedResponseV1Schema = external_exports.object({
+  receipt: ResourceUploadReceiptV2Schema,
+  upload_url: external_exports.string().url().nullable(),
+  upload_headers: external_exports.object({ "content-type": external_exports.string(), "x-upsert": external_exports.literal("false") }).strict()
+}).strict();
+var FileUploadDeduplicatedResponseV1Schema = external_exports.object({
+  version: external_exports.literal(1),
+  state: external_exports.literal("completed"),
+  deduplicated: external_exports.literal(true),
+  resource_id: external_exports.string().uuid(),
+  version_id: external_exports.string().uuid(),
+  sha256: external_exports.string().regex(/^[0-9a-f]{64}$/),
+  document_id: external_exports.string().uuid().optional()
+}).strict();
+var FileUploadPrepareResponseV1Schema = external_exports.union([
+  FileUploadPreparedResponseV1Schema,
+  FileUploadDeduplicatedResponseV1Schema
+]);
+var FileUploadFinalizeResponseV1Schema = external_exports.object({
+  resource_id: external_exports.string().uuid(),
+  version_id: external_exports.string().uuid(),
+  sha256: external_exports.string().regex(/^[0-9a-f]{64}$/),
+  idempotent_replay: external_exports.boolean(),
+  document_id: external_exports.string().uuid().optional()
+}).strict();
+var FileAttachmentHostSchema = external_exports.object({
+  kind: external_exports.enum(["feature", "project_work_item", "flow_stage_run", "thought"]),
+  id: external_exports.string().uuid()
+}).strict();
+var FileAttachmentInputSchema = external_exports.object({
+  host: FileAttachmentHostSchema,
+  pinned_version_id: external_exports.string().uuid().optional(),
+  role: external_exports.enum(RESOURCE_ATTACHMENT_ROLES).default("reference"),
+  caption: external_exports.string().max(500).optional(),
+  provenance: FileProvenanceSchema.default({})
+}).strict();
+var FileAttachmentReceiptSchema = external_exports.object({
+  attachment_id: external_exports.string().uuid(),
+  resource_id: external_exports.string().uuid(),
+  version_id: external_exports.string().uuid()
+}).strict();
+var FileDetachInputSchema = external_exports.object({
+  attachment_id: external_exports.string().uuid(),
+  host: FileAttachmentHostSchema
+}).strict();
+var ResourcePublicLinkWriteSchema = external_exports.discriminatedUnion("action", [
+  external_exports.object({
+    action: external_exports.literal("create"),
+    expires_in_days: external_exports.union([external_exports.literal(1), external_exports.literal(7), external_exports.literal(30)]).default(7),
+    pinned_version_id: external_exports.string().uuid().nullable().optional(),
+    embedded_resource_ids: external_exports.array(external_exports.string().uuid()).max(50).default([]),
+    embedded_resource_versions: external_exports.record(external_exports.string().uuid(), external_exports.string().uuid()).optional()
+  }).strict(),
+  external_exports.object({ action: external_exports.literal("revoke"), id: external_exports.string().uuid() }).strict()
+]);
+var ResourcePublicLinksSchema = external_exports.object({
+  version: external_exports.literal(1),
+  resource_id: external_exports.string().uuid(),
+  token: external_exports.string().nullable(),
+  links: external_exports.array(
+    external_exports.object({
+      id: external_exports.string().uuid(),
+      created_at: external_exports.string(),
+      expires_at: external_exports.string(),
+      revoked_at: external_exports.string().nullable(),
+      pinned_version_id: external_exports.string().uuid().nullable(),
+      embedded_resource_ids: external_exports.array(external_exports.string().uuid()).max(50),
+      embedded_resource_versions: external_exports.record(external_exports.string().uuid(), external_exports.string().uuid())
+    })
+  )
+});
+var ResourcePublicMaterialSchema = external_exports.object({
+  resource: external_exports.object({
+    id: external_exports.string().uuid(),
+    title: external_exports.string(),
+    kind: external_exports.string(),
+    mime_type: external_exports.string(),
+    byte_size: external_exports.number().nonnegative()
+  }),
+  version_id: external_exports.string().uuid(),
+  content: external_exports.string().max(1048576).nullable(),
+  storage_locator: external_exports.object({
+    bucket: external_exports.literal("thought-resource-originals"),
+    path: external_exports.string().min(1).max(1024),
+    original_filename: external_exports.string().nullable()
+  }).nullable(),
+  embedded_resource_ids: external_exports.array(external_exports.string().uuid()).max(50).optional(),
+  expires_at: external_exports.string().optional()
+});
+
+// packages/shared/dist/feature-doc.js
+var FeatureDocNarrativeSchema = external_exports.object({
+  overview: external_exports.string().max(1200),
+  why: external_exports.string().max(1200),
+  how_it_works: external_exports.string().max(1200)
+}).strict();
+
+// packages/shared/dist/file-formats.js
+var KIND_MAX_BYTES = {
+  image: 10 * 1024 * 1024,
+  text: 5 * 1024 * 1024,
+  markdown: 5 * 1024 * 1024,
+  dataset: 5 * 1024 * 1024,
+  pdf: 25 * 1024 * 1024,
+  document: 25 * 1024 * 1024,
+  audio: 25 * 1024 * 1024,
+  video: 25 * 1024 * 1024
+};
+
+// packages/shared/dist/feature-binding.js
+var FeatureCaptureFieldsSchema = external_exports.object({
+  session_id: external_exports.string().trim().min(1).max(256).nullish(),
+  git_branch: external_exports.string().trim().min(1).max(300).nullish(),
+  feature_id: external_exports.string().uuid().nullish()
+});
+function featureBranch(branch) {
+  const value = branch?.trim().replace(/^(refs\/heads\/|refs\/remotes\/[^/]+\/|origin\/)/i, "");
+  return value && !["main", "master", "develop", "trunk", "head"].includes(value.toLowerCase()) ? value : null;
+}
+
+// packages/shared/dist/feature-work.js
+var Receipt = external_exports.object({
+  scanned: external_exports.number().int().nonnegative().max(200),
+  linked: external_exports.number().int().nonnegative().max(200),
+  suggestions: external_exports.array(
+    external_exports.object({
+      work_item_id: external_exports.string().uuid(),
+      feature_id: external_exports.string().uuid(),
+      method: external_exports.enum(["binding", "handoff", "embedding"]),
+      confidence: external_exports.number().min(0).max(1)
+    })
+  ).max(200),
+  next_cursor: external_exports.string().uuid().nullable(),
+  reason: external_exports.string().optional()
+});
+
 // packages/plugin-core/dist/memlin-api-client.js
 init_auth_refusal();
 import { readFileSync } from "node:fs";
@@ -25185,7 +25398,7 @@ function agentDevice() {
 var cachedAgentVersion = null;
 function agentVersion() {
   if (cachedAgentVersion) return cachedAgentVersion;
-  cachedAgentVersion = "0.1.46";
+  cachedAgentVersion = "0.1.49";
   return cachedAgentVersion;
 }
 function agentCapabilities() {
@@ -25766,8 +25979,8 @@ var MemlinApiClient = class {
     return this.request("POST", "/workspace-contract/sync", input);
   }
   /** GET /documents/{id} — fetch one doc with body + metadata. */
-  async getDocument(documentId) {
-    return this.request("GET", `/documents/${encodeURIComponent(documentId)}`);
+  async getDocument(documentId, opts = {}) {
+    return this.request("GET", `/documents/${encodeURIComponent(documentId)}`, void 0, opts);
   }
   /** POST /documents/{id}/contract-verification — H12. Record a contract
    *  check. Used by `memlin diff --record`. */
@@ -25826,10 +26039,11 @@ var MemlinApiClient = class {
     return this.request("POST", `/insights/${encodeURIComponent(insightId)}/resolve`, { action });
   }
   /** POST /inbox/{id} — accept or reject a proposal, optionally with the reviewer's reason. */
-  async resolveProposal(proposalId, action, note) {
+  async resolveProposal(proposalId, action, note, feature) {
     return this.request("POST", `/inbox/${encodeURIComponent(proposalId)}`, {
       action,
-      ...note?.trim() ? { note: note.trim() } : {}
+      ...note?.trim() ? { note: note.trim() } : {},
+      ...feature !== void 0 ? { feature } : {}
     });
   }
   async listHandoffs(opts = {}, callOpts = {}) {
@@ -25860,17 +26074,115 @@ var MemlinApiClient = class {
   async createHandoff(input) {
     return this.request("POST", "/handoffs", input);
   }
+  /** Save agent files through the same Library upload contract used by the web app. */
+  /** Exact-version Library metadata; storage locators remain private. */
+  async getFile(resourceId, opts = {}) {
+    const query = opts.versionId ? `?version_id=${encodeURIComponent(opts.versionId)}` : "";
+    return this.request("GET", `/files/${encodeURIComponent(resourceId)}${query}`, void 0, opts);
+  }
+  /** Current permission check for one immutable original; signed URLs are transient. */
+  async getFileContent(resourceId, opts) {
+    return this.request(
+      "GET",
+      `/files/${encodeURIComponent(resourceId)}/content?version_id=${encodeURIComponent(opts.versionId)}`,
+      void 0,
+      opts
+    );
+  }
+  async prepareFileUpload(input, opts = {}) {
+    return FileUploadPrepareResponseV1Schema.parse(
+      await this.request("POST", "/files/uploads", input, { ...opts, requestTimeoutMs: 6e4 })
+    );
+  }
+  async finalizeFileUpload(uploadId, opts = {}) {
+    return FileUploadFinalizeResponseV1Schema.parse(
+      await this.request(
+        "POST",
+        `/files/uploads/${encodeURIComponent(uploadId)}/finalize`,
+        {},
+        { ...opts, requestTimeoutMs: 6e4 }
+      )
+    );
+  }
+  async attachFile(resourceId, input, opts = {}) {
+    return FileAttachmentReceiptSchema.parse(
+      await this.request(
+        "POST",
+        `/files/${encodeURIComponent(resourceId)}/attachments`,
+        FileAttachmentInputSchema.parse(input),
+        opts
+      )
+    );
+  }
+  async detachFile(resourceId, input, opts = {}) {
+    const result = await this.request(
+      "DELETE",
+      `/files/${encodeURIComponent(resourceId)}/attachments`,
+      FileDetachInputSchema.parse(input),
+      opts
+    );
+    if (typeof result.detached !== "boolean") throw new Error("Invalid file detach response");
+    return result;
+  }
   async listFeatures(opts = {}) {
     const qs = new URLSearchParams();
     if (opts.project_id) qs.set("project_id", opts.project_id);
-    const suffix = qs.toString() ? `?${qs.toString()}` : "";
-    return this.request("GET", `/features${suffix}`);
+    if (opts.status) qs.set("status", opts.status);
+    if (opts.q) qs.set("q", opts.q);
+    if (opts.limit) qs.set("limit", String(opts.limit));
+    if (opts.include) qs.set("include", opts.include);
+    if (opts.cursor) qs.set("cursor", opts.cursor);
+    return this.request("GET", `/features${qs.size ? `?${qs}` : ""}`, void 0, {
+      accountId: opts.accountId
+    });
   }
-  async createFeature(input) {
-    return this.request("POST", "/features", input);
+  async createFeature(input, opts = {}) {
+    return this.request("POST", "/features", input, opts);
   }
-  async addFeatureMember(featureId, source) {
-    return this.request("POST", `/features/${featureId}/members`, { source });
+  async addFeatureMember(featureId, source, opts = {}) {
+    return this.request(
+      "POST",
+      `/features/${encodeURIComponent(featureId)}/members`,
+      { source },
+      opts
+    );
+  }
+  async setFeatureBinding(input, opts = {}) {
+    return this.request(
+      input.feature_id === null ? "DELETE" : "PUT",
+      "/features/binding",
+      input,
+      opts
+    );
+  }
+  async getFeatureBinding(input, opts = {}) {
+    const query = new URLSearchParams(input);
+    const result = await this.request("GET", `/features/binding?${query}`, void 0, opts);
+    const value = result;
+    if (!value || typeof value !== "object" || !("binding" in value) || value.auto_link !== void 0 && typeof value.auto_link !== "boolean")
+      throw Error("Feature binding response is invalid.");
+    if (value.binding === null) return { binding: null, auto_link: value.auto_link === true };
+    const binding = FeatureCaptureFieldsSchema.pick({ feature_id: true }).parse(value.binding);
+    if (!binding.feature_id || typeof value.binding?.via !== "string")
+      throw Error("Feature binding response is invalid.");
+    return {
+      binding: { feature_id: binding.feature_id, via: value.binding.via },
+      auto_link: value.auto_link === true
+    };
+  }
+  async getFeature(featureId, opts = {}) {
+    return this.request("GET", `/features/${encodeURIComponent(featureId)}`, void 0, opts);
+  }
+  async updateFeature(featureId, input, opts = {}) {
+    return this.request("PATCH", `/features/${encodeURIComponent(featureId)}`, input, opts);
+  }
+  async removeFeatureMember(featureId, linkId, opts = {}) {
+    return this.request(
+      "DELETE",
+      `/features/${encodeURIComponent(featureId)}/members?link_id=${encodeURIComponent(linkId)}`,
+      void 0,
+      opts
+    );
   }
   /** POST /documents/search — semantic + text. */
   async search(query, opts = {}) {
@@ -26512,7 +26824,7 @@ function log(msg) {
 
 // packages/plugin-core/dist/plan-sync.js
 import { promises as fs7 } from "node:fs";
-import path9 from "node:path";
+import path10 from "node:path";
 
 // packages/plugin-core/dist/state.js
 init_atomic_rename();
@@ -26657,6 +26969,176 @@ async function assertNotLight(api, feature, accountId) {
   if (await isLightAccount(api, accountId)) throw new LightGatedError(feature);
 }
 
+// packages/plugin-core/dist/session-feature.js
+import { execFileSync } from "node:child_process";
+var TTL = 14 * 864e5;
+var UUID2 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function validSession(value) {
+  return !!value && value.length <= 256;
+}
+function readFeatureBranch(cwd) {
+  try {
+    const raw = execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 2e3
+    }).trim();
+    return raw.length <= 300 ? featureBranch(raw) : null;
+  } catch {
+    return null;
+  }
+}
+function getSessionFeature(state, identity, now = Date.now()) {
+  if (!validSession(identity.sessionId) || !identity.accountId || !identity.projectId) return null;
+  const entry = state.session_features?.[identity.sessionId];
+  if (!entry || entry.account_id !== identity.accountId || entry.project_id !== identity.projectId || !UUID2.test(entry.feature_id) || !["pin", "handoff", "branch"].includes(entry.via) || !Number.isFinite(entry.at) || entry.at > now || now - entry.at >= TTL || entry.via === "branch" && (!entry.git_branch || entry.git_branch !== featureBranch(identity.gitBranch)))
+    return null;
+  return entry;
+}
+async function sessionFeatureCaptureFields(identity) {
+  const entry = getSessionFeature(await readState(), identity);
+  const branch = featureBranch(identity.gitBranch);
+  return {
+    ...validSession(identity.sessionId) ? { session_id: identity.sessionId } : {},
+    ...branch ? { git_branch: branch } : {},
+    ...entry ? { feature_id: entry.feature_id } : {}
+  };
+}
+
+// packages/plugin-core/dist/project-resolver.js
+import { existsSync, readdirSync, readFileSync as readFileSync2, lstatSync } from "node:fs";
+import path9 from "node:path";
+init_workspace_binding();
+var ALLOW_ACCOUNT_MISMATCH_ENV = "MEMLIN_ALLOW_ACCOUNT_MISMATCH";
+function allowAccountMismatch(env = process.env) {
+  const v = env[ALLOW_ACCOUNT_MISMATCH_ENV];
+  return v === "1" || v === "true" || v === "yes";
+}
+function accountBindingHazard(r, opts = {}) {
+  if (!r.hasGitRemote || !r.project_id) return "none";
+  if (r.reason === "local-path") return opts.allowMismatch ? "warn" : "block";
+  if (r.reason === "config") return "warn";
+  return "none";
+}
+async function resolveProject(api, cwd, configProjectId) {
+  const absCwd = path9.resolve(cwd);
+  const remotes = detectGitRemotes(cwd);
+  const hasGitRemote = remotes.length > 0;
+  let serverFailure;
+  try {
+    const result = await api.resolveProject({
+      // Primary remote (back-compat with the single-remote server path).
+      git_remote: remotes[0] ?? null,
+      // All detected remotes — for the workspace-root-of-repos case, this is
+      // every sibling repo so the server resolves to the owning project.
+      git_remotes: remotes,
+      cwd: absCwd
+    });
+    if (result.project_id) {
+      return {
+        project_id: result.project_id,
+        project_name: result.name,
+        account_id: result.account_id,
+        reason: result.reason === "none" ? "config" : result.reason,
+        hasGitRemote,
+        enforce_done_deployed: result.enforce_done_deployed
+      };
+    }
+  } catch (e) {
+    serverFailure = summarizeBackendFailure(e) ?? void 0;
+  }
+  if (configProjectId) {
+    const localBinding = await findWorkspaceBinding(absCwd).catch(() => null);
+    if (localBinding?.binding.project_id === configProjectId) {
+      return {
+        project_id: configProjectId,
+        project_name: null,
+        account_id: null,
+        reason: "config",
+        hasGitRemote,
+        server_failure: serverFailure
+      };
+    }
+  }
+  return {
+    project_id: null,
+    project_name: null,
+    account_id: null,
+    reason: "none",
+    hasGitRemote,
+    server_failure: serverFailure
+  };
+}
+function readGitRemote(cwd) {
+  const read = (file2) => {
+    const stat = lstatSync(file2);
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 64 * 1024)
+      throw new Error("Unsupported Git metadata");
+    return readFileSync2(file2, "utf8");
+  };
+  try {
+    let root = path9.resolve(cwd);
+    for (; ; ) {
+      const marker = path9.join(root, ".git");
+      if (existsSync(marker)) {
+        const info = lstatSync(marker);
+        if (info.isSymbolicLink()) return null;
+        let directory = marker;
+        if (info.isFile()) {
+          const match = /^gitdir:\s*(.+)$/m.exec(read(marker));
+          if (!match) return null;
+          directory = path9.resolve(root, match[1].trim());
+        }
+        const common2 = path9.join(directory, "commondir");
+        if (existsSync(common2)) directory = path9.resolve(directory, read(common2).trim());
+        let origin = false;
+        for (const line of read(path9.join(directory, "config")).split(/\r?\n/)) {
+          if (/^\s*\[/.test(line)) origin = /^\s*\[remote\s+"origin"\]\s*(?:[#;].*)?$/.test(line);
+          else if (origin) {
+            const match = /^\s*url\s*=\s*(.*?)\s*$/.exec(line);
+            if (match) return normalizeGitRemote(match[1].replace(/^"(.*)"$/, "$1"));
+          }
+        }
+        return null;
+      }
+      const parent = path9.dirname(root);
+      if (parent === root) return null;
+      root = parent;
+    }
+  } catch {
+    return null;
+  }
+}
+var MAX_WORKSPACE_SCAN = 64;
+function detectGitRemotes(cwd) {
+  const enclosing = readGitRemote(cwd);
+  if (enclosing) return [enclosing];
+  const out = [];
+  try {
+    let scanned = 0;
+    for (const entry of readdirSync(cwd, { withFileTypes: true })) {
+      if (scanned >= MAX_WORKSPACE_SCAN) break;
+      if (!entry.isDirectory() || entry.name.startsWith(".") || entry.name === "node_modules") {
+        continue;
+      }
+      scanned++;
+      const child = path9.join(cwd, entry.name);
+      if (!existsSync(path9.join(child, ".git"))) continue;
+      const remote = readGitRemote(child);
+      if (remote && !out.includes(remote)) out.push(remote);
+    }
+  } catch {
+  }
+  return out;
+}
+function isWorkspaceActive(input) {
+  return Boolean(input.resolvedProjectId) || input.workspaceBound;
+}
+function effectiveAccountId(input) {
+  return input.resolvedAccountId ?? input.configAccountId;
+}
+
 // packages/plugin-core/dist/plan-sync.js
 function homeBase(host) {
   return (host ?? resolveHost()).homeDir();
@@ -26673,7 +27155,7 @@ async function pushPlanFile(api, file2, opts = {}) {
   if (!body.trim()) {
     throw new Error("plan body is empty");
   }
-  const relPath = path9.relative(homeBase(opts.host), file2);
+  const relPath = path10.relative(homeBase(opts.host), file2);
   const state = await readState();
   const existing = state.documents[relPath];
   if (existing?.document_id && existing.content_hash === hash(raw)) {
@@ -26718,12 +27200,25 @@ async function pushPlanFile(api, file2, opts = {}) {
       created: false
     };
   }
+  const sessionId = opts.sessionId ?? process.env.MEMLIN_SESSION_ID ?? null;
+  let projectId = opts.projectId ?? null;
+  if (!projectId && sessionId && opts.cwd && opts.accountId) {
+    const resolved = await resolveProject(api, opts.cwd, null).catch(() => null);
+    if (resolved?.account_id === opts.accountId) projectId = resolved.project_id;
+  }
+  const featureFields = await sessionFeatureCaptureFields({
+    accountId: opts.accountId,
+    projectId,
+    sessionId,
+    gitBranch: opts.gitBranch === void 0 ? readFeatureBranch(opts.cwd ?? process.cwd()) : opts.gitBranch
+  });
   const result = await api.pushPlan(
     {
       title,
       body,
       cwd: opts.cwd ?? null,
-      git_remote: opts.gitRemote ?? null
+      git_remote: opts.gitRemote ?? null,
+      ...featureFields
     },
     opts.accountId ? { accountId: opts.accountId } : {}
   );
@@ -26775,7 +27270,7 @@ async function reconcileKnownPlans(api, opts = {}) {
   const state = await readState();
   for (const f of entries) {
     if (!f.endsWith(".md")) continue;
-    const abs = path9.join(plansDir(opts.host), f);
+    const abs = path10.join(plansDir(opts.host), f);
     let raw;
     let mtimeMs;
     try {
@@ -26786,7 +27281,7 @@ async function reconcileKnownPlans(api, opts = {}) {
     } catch {
       continue;
     }
-    const relPath = path9.relative(homeBase(opts.host), abs);
+    const relPath = path10.relative(homeBase(opts.host), abs);
     const tracked = state.documents[relPath]?.document_id;
     const { binding } = parsePlanFile(raw);
     const isKnown = Boolean(tracked) || Boolean(binding?.documentId);
@@ -26891,11 +27386,11 @@ ${text.trim()}`);
 
 // packages/plugin-core/dist/light-worker.js
 import { spawn } from "node:child_process";
-import path10 from "node:path";
+import path11 from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 function startLightWorker(cwd, payload) {
-  const directory = path10.dirname(fileURLToPath2(import.meta.url));
-  const worker = path10.basename(directory) === "hooks" || path10.basename(directory) === "cli" ? path10.resolve(directory, "../cli/light-worker.js") : path10.join(directory, "cli/light-worker.js");
+  const directory = path11.dirname(fileURLToPath2(import.meta.url));
+  const worker = path11.basename(directory) === "hooks" || path11.basename(directory) === "cli" ? path11.resolve(directory, "../cli/light-worker.js") : path11.join(directory, "cli/light-worker.js");
   const child = spawn(process.execPath, [worker, JSON.stringify({ cwd, payload })], {
     cwd,
     stdio: "ignore",
@@ -26914,9 +27409,9 @@ import { promises as fs10, constants as fsConstants } from "node:fs";
 
 // packages/plugin-core/dist/done-gate.js
 init_companion_client();
-import { execFileSync } from "node:child_process";
+import { execFileSync as execFileSync2 } from "node:child_process";
 import { promises as fs8 } from "node:fs";
-import path11 from "node:path";
+import path12 from "node:path";
 var CLAIM = /\bit'?s (now )?(live|deployed|done|fixed|shipped)\b|\bnow live\b|\bis live\b|\bis deployed\b|\bdeployed to prod\b|\ball done\b|\bfully (fixed|working|deployed|shipped)\b|\bfix(ed)? (and|&) deployed\b|\bmerged (and|&) deployed\b|(^|\n)\s*[-*•\s]*(done|deployed|shipped|fixed)\b|✅/i;
 var HARD = /(^|\n)\s*[-*✅•\s]*\s*(fixed|deployed|shipped|done)\b[.! ]*\s*$/im;
 var HONEST = /not (yet )?(live|merged|deployed|shipped)|isn'?t (live|merged|deployed|shipped)|remaining step|next step (is|to)|not on main|still on (the |a )?(feature )?branch|needs? (to be )?merg|to be merged|before (this|it) is live|to make (it|this) live|awaiting (merge|deploy)|hold(ing)? the merge/i;
@@ -26927,9 +27422,9 @@ function isOff(v) {
   return s === "off" || s === "0" || s === "false" || s === "no";
 }
 async function readMarker(cwd) {
-  let dir = path11.resolve(cwd);
+  let dir = path12.resolve(cwd);
   for (let i = 0; i < 40; i += 1) {
-    const file2 = path11.join(dir, ".memlin", "enforce-done-deployed.json");
+    const file2 = path12.join(dir, ".memlin", "enforce-done-deployed.json");
     try {
       const raw = await fs8.readFile(file2, "utf8");
       const parsed = JSON.parse(raw);
@@ -26944,7 +27439,7 @@ async function readMarker(cwd) {
       };
     } catch {
     }
-    const parent = path11.dirname(dir);
+    const parent = path12.dirname(dir);
     if (parent === dir) break;
     dir = parent;
   }
@@ -27030,7 +27525,7 @@ async function readTranscript(transcriptPath) {
 }
 function git(args, cwd) {
   try {
-    return execFileSync("git", args, {
+    return execFileSync2("git", args, {
       cwd,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
@@ -27042,7 +27537,7 @@ function git(args, cwd) {
 }
 function gitOk(args, cwd) {
   try {
-    execFileSync("git", args, {
+    execFileSync2("git", args, {
       cwd,
       stdio: ["ignore", "ignore", "ignore"],
       timeout: 5e3
@@ -27178,141 +27673,6 @@ import crypto5 from "node:crypto";
 import { promises as fs9 } from "node:fs";
 import os8 from "node:os";
 import path13 from "node:path";
-
-// packages/plugin-core/dist/project-resolver.js
-import { existsSync, readdirSync, readFileSync as readFileSync2, lstatSync } from "node:fs";
-import path12 from "node:path";
-init_workspace_binding();
-var ALLOW_ACCOUNT_MISMATCH_ENV = "MEMLIN_ALLOW_ACCOUNT_MISMATCH";
-function allowAccountMismatch(env = process.env) {
-  const v = env[ALLOW_ACCOUNT_MISMATCH_ENV];
-  return v === "1" || v === "true" || v === "yes";
-}
-function accountBindingHazard(r, opts = {}) {
-  if (!r.hasGitRemote || !r.project_id) return "none";
-  if (r.reason === "local-path") return opts.allowMismatch ? "warn" : "block";
-  if (r.reason === "config") return "warn";
-  return "none";
-}
-async function resolveProject(api, cwd, configProjectId) {
-  const absCwd = path12.resolve(cwd);
-  const remotes = detectGitRemotes(cwd);
-  const hasGitRemote = remotes.length > 0;
-  let serverFailure;
-  try {
-    const result = await api.resolveProject({
-      // Primary remote (back-compat with the single-remote server path).
-      git_remote: remotes[0] ?? null,
-      // All detected remotes — for the workspace-root-of-repos case, this is
-      // every sibling repo so the server resolves to the owning project.
-      git_remotes: remotes,
-      cwd: absCwd
-    });
-    if (result.project_id) {
-      return {
-        project_id: result.project_id,
-        project_name: result.name,
-        account_id: result.account_id,
-        reason: result.reason === "none" ? "config" : result.reason,
-        hasGitRemote,
-        enforce_done_deployed: result.enforce_done_deployed
-      };
-    }
-  } catch (e) {
-    serverFailure = summarizeBackendFailure(e) ?? void 0;
-  }
-  if (configProjectId) {
-    const localBinding = await findWorkspaceBinding(absCwd).catch(() => null);
-    if (localBinding?.binding.project_id === configProjectId) {
-      return {
-        project_id: configProjectId,
-        project_name: null,
-        account_id: null,
-        reason: "config",
-        hasGitRemote,
-        server_failure: serverFailure
-      };
-    }
-  }
-  return {
-    project_id: null,
-    project_name: null,
-    account_id: null,
-    reason: "none",
-    hasGitRemote,
-    server_failure: serverFailure
-  };
-}
-function readGitRemote(cwd) {
-  const read = (file2) => {
-    const stat = lstatSync(file2);
-    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 64 * 1024)
-      throw new Error("Unsupported Git metadata");
-    return readFileSync2(file2, "utf8");
-  };
-  try {
-    let root = path12.resolve(cwd);
-    for (; ; ) {
-      const marker = path12.join(root, ".git");
-      if (existsSync(marker)) {
-        const info = lstatSync(marker);
-        if (info.isSymbolicLink()) return null;
-        let directory = marker;
-        if (info.isFile()) {
-          const match = /^gitdir:\s*(.+)$/m.exec(read(marker));
-          if (!match) return null;
-          directory = path12.resolve(root, match[1].trim());
-        }
-        const common2 = path12.join(directory, "commondir");
-        if (existsSync(common2)) directory = path12.resolve(directory, read(common2).trim());
-        let origin = false;
-        for (const line of read(path12.join(directory, "config")).split(/\r?\n/)) {
-          if (/^\s*\[/.test(line)) origin = /^\s*\[remote\s+"origin"\]\s*(?:[#;].*)?$/.test(line);
-          else if (origin) {
-            const match = /^\s*url\s*=\s*(.*?)\s*$/.exec(line);
-            if (match) return normalizeGitRemote(match[1].replace(/^"(.*)"$/, "$1"));
-          }
-        }
-        return null;
-      }
-      const parent = path12.dirname(root);
-      if (parent === root) return null;
-      root = parent;
-    }
-  } catch {
-    return null;
-  }
-}
-var MAX_WORKSPACE_SCAN = 64;
-function detectGitRemotes(cwd) {
-  const enclosing = readGitRemote(cwd);
-  if (enclosing) return [enclosing];
-  const out = [];
-  try {
-    let scanned = 0;
-    for (const entry of readdirSync(cwd, { withFileTypes: true })) {
-      if (scanned >= MAX_WORKSPACE_SCAN) break;
-      if (!entry.isDirectory() || entry.name.startsWith(".") || entry.name === "node_modules") {
-        continue;
-      }
-      scanned++;
-      const child = path12.join(cwd, entry.name);
-      if (!existsSync(path12.join(child, ".git"))) continue;
-      const remote = readGitRemote(child);
-      if (remote && !out.includes(remote)) out.push(remote);
-    }
-  } catch {
-  }
-  return out;
-}
-function isWorkspaceActive(input) {
-  return Boolean(input.resolvedProjectId) || input.workspaceBound;
-}
-function effectiveAccountId(input) {
-  return input.resolvedAccountId ?? input.configAccountId;
-}
-
-// packages/plugin-core/dist/heartbeat.js
 var DEFAULT_THROTTLE_MS = 6e4;
 var HEARTBEAT_REQUEST_TIMEOUT_MS = 750;
 function statePath(cwd, host) {
@@ -27863,7 +28223,7 @@ function readGitRemote2(cwd) {
     return null;
   }
 }
-async function resolveStopWorkspaceRouting(ctx, cwd) {
+async function resolveStopWorkspaceRouting(ctx, cwd, sessionId) {
   let resolvedProjectId = null;
   let resolvedAccountId = null;
   let hazard = "none";
@@ -27874,12 +28234,23 @@ async function resolveStopWorkspaceRouting(ctx, cwd) {
     hazard = accountBindingHazard(resolved, { allowMismatch: allowAccountMismatch() });
   } catch {
   }
-  return {
-    accountId: effectiveAccountId({
-      configAccountId: ctx.config.account_id,
-      resolvedAccountId
-    }),
+  const accountId = effectiveAccountId({
+    configAccountId: ctx.config.account_id,
+    resolvedAccountId
+  });
+  const gitBranch = readFeatureBranch(cwd);
+  const feature = getSessionFeature(await readState(), {
+    accountId,
     projectId: resolvedProjectId,
+    sessionId,
+    gitBranch
+  });
+  return {
+    accountId,
+    projectId: resolvedProjectId,
+    featureId: feature?.feature_id ?? null,
+    sessionId,
+    gitBranch,
     active: isWorkspaceActive({
       resolvedProjectId,
       workspaceBound: ctx.workspaceBound
@@ -27915,7 +28286,11 @@ async function maybeProposeMemory(ctx, payload, routing) {
       user_message: exchange.user_message,
       agent_message: exchange.agent_message,
       cwd,
-      git_remote: gitRemote
+      git_remote: gitRemote,
+      project_id: routing.projectId,
+      feature_id: routing.featureId,
+      session_id: routing.sessionId,
+      git_branch: routing.gitBranch
     },
     { accountId: routing.accountId }
   );
@@ -28046,7 +28421,11 @@ async function maybeRecordOutcome(ctx, payload, routing) {
             agent_message: exchange.agent_message,
             cwd,
             git_remote: gitRemote,
-            negative_outcome_audit_id: lastResolve.audit_id
+            negative_outcome_audit_id: lastResolve.audit_id,
+            project_id: routing.projectId,
+            feature_id: routing.featureId,
+            session_id: routing.sessionId,
+            git_branch: routing.gitBranch
           },
           { accountId: routing.accountId }
         );
@@ -28180,7 +28559,9 @@ ${text}`);
       transcript: delta,
       project_id: routing.projectId,
       cwd,
-      git_remote: readGitRemote2(cwd)
+      git_remote: readGitRemote2(cwd),
+      feature_id: routing.featureId,
+      git_branch: routing.gitBranch
     },
     { accountId: routing.accountId }
   );
@@ -28394,7 +28775,11 @@ async function runStopHandler(payload, opts = {}) {
     startLightWorker(cwd, payload);
     return;
   }
-  const routing = await resolveStopWorkspaceRouting(ctx, cwd);
+  const routing = await resolveStopWorkspaceRouting(
+    ctx,
+    cwd,
+    payload.session_id ?? (payload.transcript_path ? sessionIdFromTranscriptPath(payload.transcript_path) : null)
+  );
   if (light?.active) {
     if (light.capture_enabled && light.captures < 50 && light.cost_micros < 1e6)
       await maybeScribeSession(ctx, payload, routing, true);
@@ -28426,7 +28811,7 @@ var PLUGIN_RUNTIME_TIMEOUT_MS = 150;
 var VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:[-+][0-9A-Za-z.-]+)?$/;
 var HOSTS3 = /* @__PURE__ */ new Set(["cursor", "antigravity", "codex", "claude-code"]);
 function ownVersion() {
-  const version2 = "0.1.46";
+  const version2 = "0.1.49";
   return typeof version2 === "string" && VERSION.test(version2) ? version2 : null;
 }
 async function reportPluginRuntime(report) {
