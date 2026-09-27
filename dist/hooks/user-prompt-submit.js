@@ -3940,16 +3940,55 @@ __export(workspace_binding_exports, {
   WORKSPACE_BINDING_FILE: () => WORKSPACE_BINDING_FILE,
   WORKSPACE_DIR_NAME: () => WORKSPACE_DIR_NAME,
   clearWorkspaceBinding: () => clearWorkspaceBinding,
+  findIgnoredBroadWorkspaceBinding: () => findIgnoredBroadWorkspaceBinding,
   findWorkspaceBinding: () => findWorkspaceBinding,
+  isTooBroadForWorkspaceBinding: () => isTooBroadForWorkspaceBinding,
   resolveGitWorkspaceIdentity: () => resolveGitWorkspaceIdentity,
   writeWorkspaceBinding: () => writeWorkspaceBinding
 });
 import { randomUUID as randomUUID2 } from "node:crypto";
 import { constants, promises as fs7 } from "node:fs";
+import os9 from "node:os";
 import path10 from "node:path";
+async function homeDirectories() {
+  const home = os9.homedir();
+  if (!home) return [];
+  const resolved = path10.resolve(home);
+  const real = await fs7.realpath(resolved).catch(() => resolved);
+  return real === resolved ? [resolved] : [resolved, real];
+}
+function coversHome(dir, homes) {
+  return homes.some((home) => containedBy(dir, home));
+}
+async function isTooBroadForWorkspaceBinding(dir) {
+  const homes = await homeDirectories();
+  const resolved = path10.resolve(dir);
+  const real = await fs7.realpath(resolved).catch(() => resolved);
+  return coversHome(resolved, homes) || coversHome(real, homes);
+}
+async function findIgnoredBroadWorkspaceBinding() {
+  const homes = await homeDirectories();
+  for (const home of homes) {
+    let dir = home;
+    for (let i = 0; i < 64; i++) {
+      const candidate = path10.join(dir, WORKSPACE_DIR_NAME, WORKSPACE_BINDING_FILE);
+      try {
+        const parsed = JSON.parse(await fs7.readFile(candidate, "utf8"));
+        if (typeof parsed.account_id === "string" && parsed.account_id) return candidate;
+      } catch {
+      }
+      const parent = path10.dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
+    }
+  }
+  return null;
+}
 async function walkForWorkspaceBinding(startDir) {
   let dir = path10.resolve(startDir);
+  const homes = await homeDirectories();
   for (let i = 0; i < 64; i++) {
+    if (coversHome(dir, homes)) return null;
     const candidate = path10.join(dir, WORKSPACE_DIR_NAME, WORKSPACE_BINDING_FILE);
     try {
       const raw = await fs7.readFile(candidate, "utf8");
@@ -4142,6 +4181,11 @@ async function writeWorkspaceBinding(workspaceRoot, binding) {
   const root = await fs7.realpath(path10.resolve(workspaceRoot));
   const rootEntry = await fs7.stat(root);
   if (!rootEntry.isDirectory()) throw new Error("Workspace root must be a directory.");
+  if (await isTooBroadForWorkspaceBinding(root)) {
+    throw new Error(
+      `Refusing to link ${root}: it is your home folder or above it, so the link would cover every project inside it. Run this from inside the project folder instead.`
+    );
+  }
   const dir = path10.join(root, WORKSPACE_DIR_NAME);
   try {
     const entry = await fs7.lstat(dir);
@@ -4241,7 +4285,7 @@ var init_workspace_binding = __esm({
 import { spawn as spawn2 } from "node:child_process";
 import { promises as fs10 } from "node:fs";
 import path12 from "node:path";
-import os11 from "node:os";
+import os12 from "node:os";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // packages/plugin-core/dist/state.js
@@ -11458,6 +11502,21 @@ var ThoughtPreferencesReceiptV2Schema = external_exports.object({
   scope: external_exports.enum(["personal", "project", "team"]),
   replayed: external_exports.boolean()
 }).strict();
+var ThoughtLibraryArchiveV2Schema = external_exports.object({
+  version: external_exports.literal(2),
+  thought_id: Id,
+  archived: external_exports.boolean(),
+  idempotency_key: Key
+}).strict();
+var ThoughtLibraryArchiveReceiptV2Schema = external_exports.object({
+  version: external_exports.literal(2),
+  receipt_id: Id,
+  thought_id: Id,
+  cursor: Revision,
+  archived: external_exports.boolean(),
+  archived_at: Time.nullable(),
+  replayed: external_exports.boolean()
+}).strict();
 var ThoughtTopicDesignateV2Schema = external_exports.object({
   version: external_exports.literal(2),
   root_thought_id: Id,
@@ -11663,7 +11722,7 @@ var ThoughtTopicOperationReceiptV2Schema = external_exports.object({
 var ThoughtListCursorV2Schema = external_exports.object({ updated_at: Time, id: Id }).strict();
 var ThoughtWorkspaceListQueryV2Schema = external_exports.object({
   query: external_exports.string().trim().max(160).default(""),
-  filter: external_exports.enum(["recent", "personal", "team", "project", "starred", "rooms"]).default("recent"),
+  filter: external_exports.enum(["recent", "personal", "team", "project", "starred", "rooms", "archived"]).default("recent"),
   limit: external_exports.number().int().min(1).max(100).default(30),
   cursor: ThoughtListCursorV2Schema.nullable().default(null)
 }).strict();
@@ -25076,7 +25135,7 @@ var Receipt = external_exports.object({
 // packages/plugin-core/dist/client.js
 import { promises as fs8 } from "node:fs";
 import path11 from "node:path";
-import os10 from "node:os";
+import os11 from "node:os";
 import { randomUUID as randomUUID3 } from "node:crypto";
 
 // packages/plugin-core/dist/auth.js
@@ -25324,7 +25383,7 @@ init_atomic_rename();
 init_auth_refusal();
 import { readFileSync as readFileSync2 } from "node:fs";
 import crypto5 from "node:crypto";
-import os9 from "node:os";
+import os10 from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -25617,12 +25676,12 @@ var PRIVATE_OFF_NOTICE = "Memlin private mode is OFF. This session is captured n
 // packages/plugin-core/dist/memlin-api-client.js
 var DEFAULT_API_URL = "https://memlin.ai/api/v1";
 function agentDevice() {
-  return process.env.MEMLIN_AGENT_DEVICE || os9.hostname() || "unknown";
+  return process.env.MEMLIN_AGENT_DEVICE || os10.hostname() || "unknown";
 }
 var cachedAgentVersion = null;
 function agentVersion() {
   if (cachedAgentVersion) return cachedAgentVersion;
-  cachedAgentVersion = "0.1.51";
+  cachedAgentVersion = "0.1.52";
   return cachedAgentVersion;
 }
 function agentCapabilities() {
@@ -25787,8 +25846,8 @@ var MemlinApiClient = class {
       [AGENT_DEVICE_HEADER]: agentDevice(),
       [AGENT_VERSION_HEADER]: version2,
       [AGENT_CAPABILITIES_HEADER]: (override.agentKind ? AGENT_EXPECTED_CAPABILITIES[kind] : agentCapabilities()).join(","),
-      [AGENT_PLATFORM_HEADER]: process.env.MEMLIN_AGENT_PLATFORM || os9.platform(),
-      [AGENT_ARCHITECTURE_HEADER]: process.env.MEMLIN_AGENT_ARCH || os9.arch()
+      [AGENT_PLATFORM_HEADER]: process.env.MEMLIN_AGENT_PLATFORM || os10.platform(),
+      [AGENT_ARCHITECTURE_HEADER]: process.env.MEMLIN_AGENT_ARCH || os10.arch()
     };
     if (includeAccount && this.cfg.accountId) {
       h["Memlin-Account-Id"] = this.cfg.accountId;
@@ -27015,9 +27074,9 @@ function exitHook(code) {
 // packages/plugin-core/dist/client.js
 init_auth_refusal();
 function globalConfigFilePath() {
-  return process.env.MEMLIN_CONFIG_FILE || path11.join(os10.homedir(), ".config", "memlin", "config.json");
+  return process.env.MEMLIN_CONFIG_FILE || path11.join(os11.homedir(), ".config", "memlin", "config.json");
 }
-var CONFIG_DIR = path11.join(os10.homedir(), ".config", "memlin");
+var CONFIG_DIR = path11.join(os11.homedir(), ".config", "memlin");
 var TOKEN_FILE = path11.join(CONFIG_DIR, "token.json");
 async function readConfig() {
   try {
@@ -27214,7 +27273,7 @@ var PLUGIN_RUNTIME_TIMEOUT_MS = 150;
 var VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:[-+][0-9A-Za-z.-]+)?$/;
 var HOSTS3 = /* @__PURE__ */ new Set(["cursor", "antigravity", "codex", "claude-code"]);
 function ownVersion() {
-  const version2 = "0.1.51";
+  const version2 = "0.1.52";
   return typeof version2 === "string" && VERSION.test(version2) ? version2 : null;
 }
 async function reportPluginRuntime(report) {
@@ -27335,7 +27394,7 @@ async function extractLatestUserPrompt(transcriptPath) {
 var hookDir = path12.dirname(fileURLToPath2(import.meta.url));
 var RESOLVE_BIN = path12.resolve(hookDir, "../cli/resolve.js");
 var PULL_PLANS_BIN = path12.resolve(hookDir, "../cli/pull-plans.js");
-var TURN_CACHE_FILE = path12.join(os11.homedir(), ".config", "memlin", "antigravity-turns.json");
+var TURN_CACHE_FILE = path12.join(os12.homedir(), ".config", "memlin", "antigravity-turns.json");
 async function readTurnCache() {
   try {
     const raw = await fs10.readFile(TURN_CACHE_FILE, "utf8");
@@ -27386,7 +27445,7 @@ function firePlanSync(cwd) {
 async function hasToken() {
   try {
     const raw = await fs10.readFile(
-      path12.join(os11.homedir(), ".config", "memlin", "token.json"),
+      path12.join(os12.homedir(), ".config", "memlin", "token.json"),
       "utf8"
     );
     const t = JSON.parse(raw);
