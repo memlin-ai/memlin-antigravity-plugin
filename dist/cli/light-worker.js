@@ -26463,7 +26463,7 @@ function agentDevice() {
 var cachedAgentVersion = null;
 function agentVersion() {
   if (cachedAgentVersion) return cachedAgentVersion;
-  cachedAgentVersion = "0.1.53";
+  cachedAgentVersion = "0.1.54";
   return cachedAgentVersion;
 }
 function agentCapabilities() {
@@ -33274,6 +33274,7 @@ async function maybeProposeMemory(ctx, payload, routing) {
 }
 var TURN_TIMING_OUTLIER_MS = 30 * 60 * 1e3;
 async function maybeRecordTurnTiming(ctx, payload, routing) {
+  if (!routing.active) return;
   const state = await readState();
   const sessionId = payload.session_id ?? sessionIdFromTranscriptPath(payload.transcript_path) ?? null;
   const lastResolve = getLastResolveForSession(state, sessionId);
@@ -33315,6 +33316,10 @@ async function maybeRecordTurnTiming(ctx, payload, routing) {
   }
 }
 async function maybeRecordOutcome(ctx, payload, routing) {
+  if (!routing.active) {
+    log("outcome: skipped \u2014 not a known Memlin workspace");
+    return;
+  }
   const state = await readState();
   const transcriptSessionId = sessionIdFromTranscriptPath(payload.transcript_path);
   const sessionId = payload.session_id ?? transcriptSessionId ?? null;
@@ -33371,9 +33376,7 @@ async function maybeRecordOutcome(ctx, payload, routing) {
     log(
       `recorded resolve.outcome: ${outcome} for audit ${lastResolve.audit_id} (${attribution.attribution_mode}, ${attribution.applied_item_ids.length} applied)`
     );
-    if (outcome === "negative" && !routing.active) {
-      log("correction capture: skipped \u2014 not a known Memlin workspace");
-    } else if (outcome === "negative" && routing.hazard === "block") {
+    if (outcome === "negative" && routing.hazard === "block") {
       log(
         "correction capture: BLOCKED \u2014 account-binding mismatch (git remote not owned by the resolved project). Re-link with `memlin add-project`, or set MEMLIN_ALLOW_ACCOUNT_MISMATCH=1 to record here anyway."
       );
